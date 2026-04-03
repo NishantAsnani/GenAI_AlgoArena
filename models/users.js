@@ -18,11 +18,24 @@ const userSchema = new Schema({
     google_id:{
         type: String,
     },
+    role:{
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user'
+    },
+    avatar_url: {
+      type: String,
+    },
+    stats:{
+      type: Object,
+      default: {
+      }
+    }
 }, { timestamps: true });
 
 
 userSchema.pre('save', async function(next) {
-  console.log(this);
+
   if (this.google_id && !this.password) {
       return 
     }

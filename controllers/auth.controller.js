@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 const authServices = require("../services/auth.service");
 const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret";
 const { getOAuthClient } = require("../utils/helper");
+
 async function Login(req, res) {
   try {
     const { email, password } = req.body;
@@ -32,7 +33,7 @@ async function Login(req, res) {
     } else {
 
       const token = jwt.sign(
-        { id: user.id, email: user.email },
+        { id: user.id, email: user.email},
         jwtSecret,
         { expiresIn: "24h" }
       );
@@ -41,7 +42,7 @@ async function Login(req, res) {
 
       return sendSuccessResponse(
         res,
-        { token, email },
+        { token, email,profile_pic: user?.avatar_url },
         "Logged In Sucessfully",
         STATUS_CODE.SUCCESS
       );
@@ -59,6 +60,8 @@ async function Login(req, res) {
 async function Signup(req, res) {
   try {
     const { name, email, password } = req.body;
+    const avatar_url=req.file ? req.file : null;
+    console.log("Received avatar_url in Signup:", req.body);
 
     const existingUser = await User.findOne({ email });
 
@@ -72,12 +75,17 @@ async function Signup(req, res) {
       );
     }
 
+    
+
     const createUser = await authServices.createNewUser({
       name,
       email,
       password,
-      google_id: null
+      google_id: null,
+      avatar_url
     });
+
+    
 
     if (createUser) {
       return sendSuccessResponse(
@@ -154,17 +162,20 @@ async function handleGoogleCallback(req, res) {
 
       return sendSuccessResponse(
         res,
-        { token, email:user.email },
+        { token, email:user.email,profile_pic: user?.avatar_url },
         "Logged In Sucessfully",
         STATUS_CODE.SUCCESS
       );
     }
 
+  
+
     const createUser = await authServices.createNewUser({
       name: payload.name,
       email: payload.email,
       password: null,
-      google_id: payload.sub
+      google_id: payload.sub,
+      avatar_url:payload.picture
     });
 
 

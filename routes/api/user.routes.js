@@ -3,7 +3,8 @@ const router=express.Router()
 const authControllers=require('../../controllers/auth.controller')
 const userControllers=require('../../controllers/user.controller')
 const auth=require('../../middleware/auth')
-
+const multer=require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.get('/',auth,userControllers.getAllUsers)
 
@@ -15,7 +16,7 @@ router.get('/:id',auth,userControllers.getUserById)
 
 router.post('/login',authControllers.Login)
 
-router.post('/signup',authControllers.Signup)
+router.post('/signup',upload.single('avatar_url'),authControllers.Signup)
 
 router.patch('/:id',auth,userControllers.editUser)
 
