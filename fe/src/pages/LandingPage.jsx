@@ -77,7 +77,7 @@ export default function LandingPage() {
           <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
             <Code2 size={16} className="text-white" />
           </div>
-          <span className="font-display font-bold text-lg text-white tracking-tight">CodeForge</span>
+          <span className="font-display font-bold text-lg text-white tracking-tight">AlgoArena</span>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => nav('/auth')}>Sign In</Button>

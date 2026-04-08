@@ -8,8 +8,18 @@ const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret";
 const { getOAuthClient } = require("../utils/helper");
 
 async function Login(req, res) {
+  const loginSchema = Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().required()
+  });
   try {
-    const { email, password } = req.body;
+    const {error, value} = loginSchema.validate(req.body);
+
+    if(error){
+      return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+    }
+
+    const { email, password } = value;
 
     const user = await User.findOne({ email });
 
@@ -58,10 +68,26 @@ async function Login(req, res) {
 }
 
 async function Signup(req, res) {
+  const signupSchema = Joi.object({
+    name: Joi.string().required(),
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).pattern(/^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]+$/).required()
+    .messages({
+    'string.pattern.base': 'Password must contain at least one uppercase letter and one number, and be alphanumeric',
+    'string.min': 'Password must be at least 8 characters long',
+    'any.required': 'Password is required'
+  })
+  });
   try {
-    const { name, email, password } = req.body;
+    const {error, value} = signupSchema.validate(req.body);
+
+    if(error){
+      return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+    }
+
+    const { name, email, password } = value;
     const avatar_url=req.file ? req.file : null;
-    console.log("Received avatar_url in Signup:", req.body);
+    
 
     const existingUser = await User.findOne({ email });
 

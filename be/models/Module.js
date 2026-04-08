@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const moduleSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
-  difficulty: { type: String },
+  difficulty: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'] },
   tags: [{ type: String }],
   created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   order_index: { type: Number, default: 0 },
