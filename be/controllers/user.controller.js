@@ -2,15 +2,24 @@ const  User  = require("../models/users");
 const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 const { STATUS_CODE } = require("../utils/constants");
 const userServices = require("../services/user.service");
-
+const Joi=require('joi');
 
 
 async function getAllUsers(req, res) {
+  const querySchema = Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(10),
+    name: Joi.string().allow('')
+  });
   try {
 
-    const page=req.query.page? parseInt(req.query.page) : 1;
-    const limit=req.query.limit? parseInt(req.query.limit) : 10;
-    const nameSearch = req.query.name ? req.query.name : '';
+    const {error, value} = querySchema.validate(req.query);
+
+    if(error){
+      return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+    }
+
+    const {page=1, limit=10, name: nameSearch} = value;
 
 
     const allUsers = await userServices.getAllUsers({
@@ -40,18 +49,17 @@ async function getAllUsers(req, res) {
 }
 
 async function getUserById(req, res) {
+  const idSchema = Joi.object({
+    id: Joi.string().hex().required()
+  });
   try {
-    const userId = req.params.id;
-    
-    if(!userId) {
-      return sendErrorResponse(
-        res,
-        {},
-        "User ID is required",
-        STATUS_CODE.BAD_REQUEST
-      );
+    const {error, value} = idSchema.validate(req.params);
+
+    if(error){
+      return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
     }
 
+    const userId = value.id;
     const fetchUser = await userServices.fetchUserById(userId);
 
     if(!fetchUser) {
@@ -68,7 +76,7 @@ async function getUserById(req, res) {
         res,
         fetchUser,
         "User Retrieved Successfully",
-        STATUS_CODE.OK
+        STATUS_CODE.SUCCESS
       );
     
     
@@ -83,17 +91,17 @@ async function getUserById(req, res) {
 }
 
 async function deleteUser(req, res) {
+  const idSchema = Joi.object({
+    id: Joi.string().hex().required()
+  });
   try {
-    const userId = req.params.id;
-    
-    if(!userId) {
-      return sendErrorResponse(
-        res,
-        {},
-        "User ID is required",
-        STATUS_CODE.BAD_REQUEST
-      );
+    const {error, value} = idSchema.validate(req.params);
+
+    if(error){
+      return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
     }
+
+    const userId = value.id;
 
     const deletedUser= await userServices.deleteUser(userId);
 
@@ -116,9 +124,20 @@ async function deleteUser(req, res) {
 }
 
 async function editUser(req, res) {
+  const editUserSchema = Joi.object({
+    name: Joi.string(),
+    email: Joi.string().email(),
+    password: Joi.string().min(6)
+  });
   try {
+    const {error, value} = editUserSchema.validate(req.body);
+
+    if(error){
+      return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+    }
+
     const userId = req.params.id;
-    const { name, email, password } = req.body;
+    const { name, email, password } = value;
 
     if (!userId) {
       return sendErrorResponse(
@@ -150,7 +169,7 @@ async function editUser(req, res) {
         res,
         updatedUser.data,
         "User Updated Successfully",
-        STATUS_CODE.OK
+        STATUS_CODE.SUCCESS
       );
     } 
 
