@@ -6,7 +6,7 @@ const bcrypt = require("bcrypt");
 const authServices = require("../services/auth.service");
 const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret";
 const { getOAuthClient } = require("../utils/helper");
-
+const Joi=require('joi');
 async function Login(req, res) {
   const loginSchema = Joi.object({
     email: Joi.string().email().required(),
@@ -22,6 +22,8 @@ async function Login(req, res) {
     const { email, password } = value;
 
     const user = await User.findOne({ email });
+
+    console.log(user) // Debugging line to check the user object retrieved from the database
 
     if (!user) {
       return sendErrorResponse(
@@ -58,6 +60,7 @@ async function Login(req, res) {
       );
     }
   } catch (err) {
+    console.log(err)
     return sendErrorResponse(
       res,
       {},
@@ -71,7 +74,7 @@ async function Signup(req, res) {
   const signupSchema = Joi.object({
     name: Joi.string().required(),
     email: Joi.string().email().required(),
-    password: Joi.string().min(6).pattern(/^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]+$/).required()
+    password: Joi.string().min(6).pattern(/^(?=.*[A-Z])(?=.*\d).*$/).required()
     .messages({
     'string.pattern.base': 'Password must contain at least one uppercase letter and one number, and be alphanumeric',
     'string.min': 'Password must be at least 8 characters long',

@@ -8,6 +8,7 @@ const lessonSchema = new mongoose.Schema({
   video_urls: [{ type: String }],
   order_index: { type: Number, default: 0 },
   xp_reward: { type: Number, default: 0 },
+  problems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
   created_at: { type: Date, default: Date.now }
 });
 

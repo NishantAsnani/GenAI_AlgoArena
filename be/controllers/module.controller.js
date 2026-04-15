@@ -17,14 +17,15 @@ async function getAllModules(req, res) {
 
         const {page=1, limit=10} = value;
         const offset = (page - 1) * limit;
-        const modules = await Module.findAll({
+        const modules = await Module.find({
             offset,
             limit
-        });
+        }).populate('lessons');
 
     
         return sendSuccessResponse(res, modules, "Modules fetched successfully");
     }catch(err){
+        console.log(err)
         return sendErrorResponse(res, err, "Failed to fetch modules");
     }
 }
@@ -59,6 +60,7 @@ async function createModule(req, res) {
         description: Joi.string(),
         difficulty: Joi.string().valid('Beginner', 'Intermediate', 'Advanced'),
         tags: Joi.array().items(Joi.string()),
+        lessons: Joi.array().items(Joi.string().hex())
     });
 
 
@@ -74,7 +76,8 @@ async function createModule(req, res) {
             description: value.description,
             difficulty: value.difficulty,
             tags: value.tags,
-            created_by: req.user._id
+            created_by: req.user._id,
+            lessons: value.lessons || []
         });
 
         return sendSuccessResponse(res, newModule, "Module created successfully", STATUS_CODE.CREATED);
@@ -83,10 +86,49 @@ async function createModule(req, res) {
     }
 }
 
+async function editModule(req, res) {
+    const moduleIdSchema = Joi.object({
+        id: Joi.string().hex().required()
+    });
+
+    const moduleUpdateSchema = Joi.object({
+        title: Joi.string(),
+        description: Joi.string(),
+        difficulty: Joi.string().valid('Beginner', 'Intermediate', 'Advanced'),
+        tags: Joi.array().items(Joi.string()),
+        lessons: Joi.array().items(Joi.string().hex())
+    });
+
+    try{
+        const {error: idError, value: idValue} = moduleIdSchema.validate(req.params);
+
+        if(idError){
+            return sendErrorResponse(res, idError.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+        }
+
+        const {error: updateError, value: updateValue} = moduleUpdateSchema.validate(req.body);
+
+        if(updateError){
+            return sendErrorResponse(res, updateError.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+        }
+
+        const {id} = idValue;
+        const updatedModule = await Module.findByIdAndUpdate(id, updateValue, { new: true });
+
+        if(!updatedModule){
+            return sendErrorResponse(res, null, "Module not found", STATUS_CODE.NOT_FOUND);
+        }
+
+        return sendSuccessResponse(res, updatedModule, "Module updated successfully");
+    }catch(err){
+        return sendErrorResponse(res, err, "Failed to update module");
+    }
+}
 
 module.exports = {
 getAllModules,
 getModuleById,
-createModule
+createModule,
+editModule
 }
 
