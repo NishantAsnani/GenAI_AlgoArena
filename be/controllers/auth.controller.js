@@ -3,6 +3,7 @@ const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 const { STATUS_CODE } = require("../utils/constants");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const Joi = require("joi");
 const authServices = require("../services/auth.service");
 const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret";
 const { getOAuthClient } = require("../utils/helper");
@@ -13,57 +14,49 @@ async function Login(req, res) {
     password: Joi.string().required()
   });
   try {
-    const {error, value} = loginSchema.validate(req.body);
+    const { error, value } = loginSchema.validate(req.body);
 
-    if(error){
+    if (error) {
       return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
     }
 
     const { email, password } = value;
-
     const user = await User.findOne({ email });
 
     if (!user) {
+      return sendErrorResponse(res, {}, "Invalid Credentials", STATUS_CODE.NOT_FOUND);
+    }
+
+    // FIX: Users created via Google have no password — block email login for them
+    if (!user.password) {
       return sendErrorResponse(
         res,
         {},
-        "Invalid Credentials",
-        STATUS_CODE.NOT_FOUND
+        "This account was created with Google. Please sign in with Google.",
+        STATUS_CODE.UNAUTHORIZED
       );
     }
+
     const validatePassword = await bcrypt.compare(password, user.password);
 
     if (!validatePassword) {
-      sendErrorResponse(
-        res,
-        {},
-        "Invalid Credentials",
-        STATUS_CODE.UNAUTHORIZED
-      );
-    } else {
-
-      const token = jwt.sign(
-        { id: user.id, email: user.email},
-        jwtSecret,
-        { expiresIn: "24h" }
-      );
-
-
-
-      return sendSuccessResponse(
-        res,
-        { token, email,profile_pic: user?.avatar_url },
-        "Logged In Sucessfully",
-        STATUS_CODE.SUCCESS
-      );
+      return sendErrorResponse(res, {}, "Invalid Credentials", STATUS_CODE.UNAUTHORIZED);
     }
-  } catch (err) {
-    return sendErrorResponse(
-      res,
-      {},
-      "Internal Server Error",
-      STATUS_CODE.UNAUTHORIZED
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      jwtSecret,
+      { expiresIn: "24h" }
     );
+
+    return sendSuccessResponse(
+      res,
+      { token, email, profile_pic: user?.avatar_url },
+      "Logged In Successfully",
+      STATUS_CODE.SUCCESS
+    );
+  } catch (err) {
+    return sendErrorResponse(res, {}, "Internal Server Error", STATUS_CODE.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -72,36 +65,27 @@ async function Signup(req, res) {
     name: Joi.string().required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).pattern(/^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]+$/).required()
-    .messages({
-    'string.pattern.base': 'Password must contain at least one uppercase letter and one number, and be alphanumeric',
-    'string.min': 'Password must be at least 8 characters long',
-    'any.required': 'Password is required'
-  })
+      .messages({
+        'string.pattern.base': 'Password must contain at least one uppercase letter and one number, and be alphanumeric',
+        'string.min': 'Password must be at least 6 characters long',
+        'any.required': 'Password is required'
+      })
   });
   try {
-    const {error, value} = signupSchema.validate(req.body);
+    const { error, value } = signupSchema.validate(req.body);
 
-    if(error){
+    if (error) {
       return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
     }
 
     const { name, email, password } = value;
-    const avatar_url=req.file ? req.file : null;
-    
+    const avatar_url = req.file ? req.file : null;
 
     const existingUser = await User.findOne({ email });
 
-
     if (existingUser) {
-      return sendErrorResponse(
-        res,
-        {},
-        "User Already Exists",
-        STATUS_CODE.CONFLICT
-      );
+      return sendErrorResponse(res, {}, "User Already Exists", STATUS_CODE.CONFLICT);
     }
-
-    
 
     const createUser = await authServices.createNewUser({
       name,
@@ -110,8 +94,6 @@ async function Signup(req, res) {
       google_id: null,
       avatar_url
     });
-
-    
 
     if (createUser) {
       return sendSuccessResponse(
@@ -139,10 +121,9 @@ async function generateRedirectUrl(req, res) {
       access_type: "offline",
       prompt: "consent",
       scope: ["openid", "email", "profile"],
-      state: "login"
     });
 
-    sendSuccessResponse(
+    return sendSuccessResponse(
       res,
       { auth_url: url },
       "Google Auth URL generated successfully",
@@ -158,11 +139,19 @@ async function generateRedirectUrl(req, res) {
   }
 }
 
+// FIX: This is the callback Google redirects to after user approves.
+// It must redirect the browser back to the frontend with the JWT in the URL.
 async function handleGoogleCallback(req, res) {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
   try {
     const { code } = req.query;
-    const oauth2Client = getOAuthClient();
 
+    if (!code) {
+      return res.redirect(`${frontendUrl}/auth?error=missing_code`);
+    }
+
+    const oauth2Client = getOAuthClient();
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
@@ -171,54 +160,51 @@ async function handleGoogleCallback(req, res) {
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
-
     const payload = ticket.getPayload();
-    const user= await User.findOne({ email: payload.email });
+    let user = await User.findOne({ email: payload.email });
 
-    if(user){
-      if(!user.google_id){
+    if (user) {
+      // Link google_id if not already linked
+      if (!user.google_id) {
         user.google_id = payload.sub;
         await user.save();
       }
+
       const token = jwt.sign(
         { id: user.id, email: user.email },
         jwtSecret,
         { expiresIn: "24h" }
       );
 
-      return sendSuccessResponse(
-        res,
-        { token, email:user.email,profile_pic: user?.avatar_url },
-        "Logged In Sucessfully",
-        STATUS_CODE.SUCCESS
+      // FIX: Redirect to frontend with token — do NOT return JSON
+      return res.redirect(
+        `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(user.email)}&profile_pic=${encodeURIComponent(user?.avatar_url || "")}`
       );
     }
 
-  
-
-    const createUser = await authServices.createNewUser({
+    // New user via Google
+    const newUser = await authServices.createNewUser({
       name: payload.name,
       email: payload.email,
       password: null,
       google_id: payload.sub,
-      avatar_url:payload.picture
+      avatar_url: payload.picture
     });
 
+    // FIX: Generate token for new Google user (was missing before — returned empty {})
+    const token = jwt.sign(
+      { id: newUser._id, email: newUser.email },
+      jwtSecret,
+      { expiresIn: "24h" }
+    );
 
-    return sendSuccessResponse(
-      res,
-      {},
-      "Google Signup successful",
-      STATUS_CODE.SUCCESS
+    return res.redirect(
+      `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(newUser.email)}&profile_pic=${encodeURIComponent(newUser?.avatar_url || "")}`
     );
 
   } catch (err) {
-    return sendErrorResponse(
-      res,
-      {},
-      `Error handling Google callback: ${err.message}`,
-      STATUS_CODE.INTERNAL_SERVER_ERROR
-    );
+    console.error("Google callback error:", err.message);
+    return res.redirect(`${frontendUrl}/auth?error=${encodeURIComponent(err.message)}`);
   }
 }
 

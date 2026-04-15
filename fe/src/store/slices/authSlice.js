@@ -1,32 +1,28 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+import axios from 'axios'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-// ── Mock helpers ───────────────────────────────────────────────────────────────
-const delay = (ms) => new Promise(r => setTimeout(r, ms))
-const MOCK_TOKEN = 'mock-jwt-token'
-
-const saveSession = (user) => {
-  localStorage.setItem('aa_token', MOCK_TOKEN)
-  localStorage.setItem('aa_user', JSON.stringify(user))
+const saveSession = (token, email, profile_pic = '') => {
+  localStorage.setItem('aa_token', token)
+  localStorage.setItem('aa_user', JSON.stringify({ email, profile_pic }))
 }
+
 const clearSession = () => {
   localStorage.removeItem('aa_token')
   localStorage.removeItem('aa_user')
 }
 
-// ── Thunks ─────────────────────────────────────────────────────────────────────
 
 export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      // BACKEND: const data = await authApi.login({ email, password })
-      // BACKEND: saveSession(data.user); return { user: data.user, token: data.token }
-      await delay(900)
-      const user = { id: '1', name: 'Demo User', email, profile: {} }
-      saveSession(user)
-      return { user, token: MOCK_TOKEN }
+      const { data } = await axios.post(`${API_URL}/user/login`, { email, password })
+      const { token, email: userEmail, profile_pic } = data.data
+      saveSession(token, userEmail, profile_pic)
+      return { user: { email: userEmail, profile_pic }, token }
     } catch (err) {
-      return rejectWithValue(err.response?.data?.error || err.message)
+      return rejectWithValue(err.response?.data?.message || err.message)
     }
   }
 )
@@ -35,28 +31,10 @@ export const signupUser = createAsyncThunk(
   'auth/signup',
   async ({ name, email, password }, { rejectWithValue }) => {
     try {
-      // BACKEND: await authApi.signup({ name, email, password }); return { email, name }
-      await delay(1000)
+      await axios.post(`${API_URL}/user/signup`, { name, email, password })
       return { email, name }
     } catch (err) {
-      return rejectWithValue(err.response?.data?.error || err.message)
-    }
-  }
-)
-
-export const verifyOtp = createAsyncThunk(
-  'auth/verifyOtp',
-  async ({ email, otp, name }, { rejectWithValue }) => {
-    try {
-      // BACKEND: const data = await authApi.verifyOtp({ email, otp })
-      // BACKEND: saveSession(data.user); return { user: data.user, token: data.token }
-      await delay(800)
-      if (otp.length < 6) throw new Error('Invalid OTP')
-      const user = { id: '2', name: name || 'New User', email, profile: {} }
-      saveSession(user)
-      return { user, token: MOCK_TOKEN }
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.error || err.message || 'Invalid OTP')
+      return rejectWithValue(err.response?.data?.message || err.message)
     }
   }
 )
@@ -65,13 +43,11 @@ export const loginWithGoogle = createAsyncThunk(
   'auth/loginWithGoogle',
   async (_, { rejectWithValue }) => {
     try {
-      // BACKEND: window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`
-      await delay(700)
-      const user = { id: 'g1', name: 'Google User', email: 'google@example.com', profile: {} }
-      saveSession(user)
-      return { user, token: MOCK_TOKEN }
+      const { data } = await axios.get(`${API_URL}/user/generateUrl`)
+      const { auth_url } = data.data
+      window.location.href = auth_url
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(err.response?.data?.message || err.message)
     }
   }
 )
@@ -91,10 +67,18 @@ const authSlice = createSlice({
   },
   reducers: {
     clearError(state) { state.error = null },
+
+    setGoogleSession(state, { payload }) {
+      state.user    = { email: payload.email, profile_pic: payload.profile_pic }
+      state.token   = payload.token
+      state.loading = false
+      state.error   = null
+      saveSession(payload.token, payload.email, payload.profile_pic)
+    },
   },
   extraReducers: (builder) => {
-    const pending  = (s)         => { s.loading = true;  s.error = null }
-    const rejected = (s, a)      => { s.loading = false; s.error = a.payload }
+    const pending  = (s)             => { s.loading = true;  s.error = null }
+    const rejected = (s, a)          => { s.loading = false; s.error = a.payload }
     const session  = (s, { payload }) => {
       s.loading = false
       s.user    = payload.user
@@ -113,17 +97,17 @@ const authSlice = createSlice({
     builder.addCase(verifyOtp.fulfilled,      session)
     builder.addCase(verifyOtp.rejected,       rejected)
 
+    // loginWithGoogle only shows loading state — the page redirects away
     builder.addCase(loginWithGoogle.pending,  pending)
-    builder.addCase(loginWithGoogle.fulfilled,session)
     builder.addCase(loginWithGoogle.rejected, rejected)
 
-    builder.addCase(logoutUser.fulfilled,     (s) => {
+    builder.addCase(logoutUser.fulfilled, (s) => {
       s.user = null; s.token = null; s.loading = false; s.error = null
     })
   },
 })
 
-export const { clearError } = authSlice.actions
+export const { clearError, setGoogleSession } = authSlice.actions
 export default authSlice.reducer
 
 // ── Selectors ──────────────────────────────────────────────────────────────────

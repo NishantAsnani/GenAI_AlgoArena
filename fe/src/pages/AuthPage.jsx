@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import {
   loginUser, signupUser, verifyOtp, loginWithGoogle,
-  selectAuthLoading, clearError,
+  selectAuthLoading, clearError, setGoogleSession,
 } from '../store/slices/authSlice'
 import { Button, Divider, Input } from '../components/ui'
 import OtpInput from '../components/auth/OtpInput'
@@ -53,6 +53,31 @@ export default function AuthPage() {
   const [pendingEmail, setPendingEmail] = useState('')
   const [pendingName,  setPendingName]  = useState('')
 
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token      = params.get('token')
+    const email      = params.get('email')
+    const profilePic = params.get('profile_pic')
+    const error      = params.get('error')
+
+    if (error) {
+      toast.error(`Google sign-in failed: ${decodeURIComponent(error)}`)
+      window.history.replaceState({}, '', '/auth')
+      return
+    }
+
+    if (token && email) {
+      dispatch(setGoogleSession({
+        token,
+        email: decodeURIComponent(email),
+        profile_pic: decodeURIComponent(profilePic || ''),
+      }))
+      toast.success('Signed in with Google!')
+      nav('/')
+    }
+  }, [])
+
   useEffect(() => {
     if (view !== 'otp') return
     setOtpTimer(60)
@@ -74,10 +99,12 @@ export default function AuthPage() {
     else toast.error(res.payload || 'Login failed')
   }
 
+
   const handleGoogle = async () => {
     const res = await dispatch(loginWithGoogle())
-    if (loginWithGoogle.fulfilled.match(res)) { toast.success('Signed in with Google!'); nav('/') }
-    else toast.error(res.payload || 'Google sign-in failed')
+    if (loginWithGoogle.rejected.match(res)) {
+      toast.error(res.payload || 'Google sign-in failed')
+    }
   }
 
   const handleSignup = async () => {
@@ -293,10 +320,6 @@ export default function AuthPage() {
                 <Button variant="primary" onClick={handleVerifyOtp} loading={loading} className="w-full glow-orange">
                   Verify & Continue <ArrowRight size={15} />
                 </Button>
-
-                <p className="text-center text-xs font-semibold text-black">
-                  For demo: any 6-digit code will work
-                </p>
               </motion.div>
             )}
 
