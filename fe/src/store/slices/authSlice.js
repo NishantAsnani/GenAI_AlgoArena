@@ -12,7 +12,6 @@ const clearSession = () => {
   localStorage.removeItem('aa_user')
 }
 
-
 export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
@@ -31,8 +30,10 @@ export const signupUser = createAsyncThunk(
   'auth/signup',
   async ({ name, email, password }, { rejectWithValue }) => {
     try {
-      await axios.post(`${API_URL}/user/signup`, { name, email, password })
-      return { email, name }
+      const { data } = await axios.post(`${API_URL}/user/signup`, { name, email, password })
+      const { token, email: userEmail, profile_pic } = data.data
+      saveSession(token, userEmail, profile_pic)
+      return { user: { email: userEmail, profile_pic }, token }
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -77,8 +78,8 @@ const authSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    const pending  = (s)             => { s.loading = true;  s.error = null }
-    const rejected = (s, a)          => { s.loading = false; s.error = a.payload }
+    const pending  = (s)              => { s.loading = true;  s.error = null }
+    const rejected = (s, a)           => { s.loading = false; s.error = a.payload }
     const session  = (s, { payload }) => {
       s.loading = false
       s.user    = payload.user
@@ -90,12 +91,8 @@ const authSlice = createSlice({
     builder.addCase(loginUser.rejected,       rejected)
 
     builder.addCase(signupUser.pending,       pending)
-    builder.addCase(signupUser.fulfilled,     (s) => { s.loading = false })
+    builder.addCase(signupUser.fulfilled,     session)
     builder.addCase(signupUser.rejected,      rejected)
-
-    builder.addCase(verifyOtp.pending,        pending)
-    builder.addCase(verifyOtp.fulfilled,      session)
-    builder.addCase(verifyOtp.rejected,       rejected)
 
     // loginWithGoogle only shows loading state — the page redirects away
     builder.addCase(loginWithGoogle.pending,  pending)
