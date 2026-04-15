@@ -52,6 +52,20 @@ export const loginWithGoogle = createAsyncThunk(
   }
 )
 
+export const verifyOtp = createAsyncThunk(
+  'auth/verifyOtp',
+  async ({ email, otp, name }, { rejectWithValue }) => {
+    try {
+      const { data } = await axios.post(`${API_URL}/user/verify-otp`, { email, otp, name })
+      const { token, email: userEmail, profile_pic } = data.data
+      saveSession(token, userEmail, profile_pic)
+      return { user: { email: userEmail, profile_pic }, token }
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message)
+    }
+  }
+)
+
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
   clearSession()
 })
