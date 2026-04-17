@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Code2, Zap, Trophy, ChevronRight, Terminal, GitBranch, Cpu, ArrowRight } from 'lucide-react'
+import { Code2, Zap, Trophy, ChevronRight, Terminal, GitBranch, Cpu, ArrowRight, LayoutDashboard } from 'lucide-react'
 import { Button } from '../components/ui'
+import { useAppSelector } from '../hooks/redux'
+import { selectToken } from '../store/slices/authSlice'
 
 const FEATURES = [
   { icon: Terminal,  title: 'In-Browser IDE',      desc: 'Monaco Editor with syntax highlighting and autocomplete — exactly like VS Code.',          color: '#f97316' },
@@ -32,24 +34,41 @@ const up = (delay = 0) => ({
 })
 
 export default function LandingPage() {
-  const nav = useNavigate()
+  const nav       = useNavigate()
+  const token     = useAppSelector(selectToken)
+  const loggedIn  = Boolean(token)
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
 
       {/* ── Sticky Navbar ─────────────────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 flex items-center justify-between px-8 py-4">
-        <div className="flex items-center gap-2.5">
+        {/* Logo — clickable, goes to landing page */}
+        <button
+          onClick={() => nav('/')}
+          className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+        >
           <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
             <Code2 size={16} className="text-white" />
           </div>
           <span className="font-bold text-xl text-black tracking-tight">AlgoArena</span>
-        </div>
+        </button>
+
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => nav('/auth')}>Sign In</Button>
-          <Button variant="primary" size="sm" onClick={() => nav('/auth')} className="glow-orange">
-            Get Started <ChevronRight size={14} />
-          </Button>
+          {loggedIn ? (
+            /* ── Logged-in: single "Go to Dashboard" button ── */
+            <Button variant="primary" size="sm" onClick={() => nav('/dashboard')} className="glow-orange">
+              <LayoutDashboard size={14} /> Go to Dashboard
+            </Button>
+          ) : (
+            /* ── Guest: Sign In + Get Started ── */
+            <>
+              <Button variant="ghost" size="sm" onClick={() => nav('/auth')}>Sign In</Button>
+              <Button variant="primary" size="sm" onClick={() => nav('/auth')} className="glow-orange">
+                Get Started <ChevronRight size={14} />
+              </Button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -78,12 +97,14 @@ export default function LandingPage() {
         </motion.p>
 
         <motion.div {...up(0.24)} className="flex items-center justify-center gap-4 flex-wrap">
-          <Button variant="primary" size="lg" onClick={() => nav('/auth')} className="glow-orange">
-            Start Solving Free <ArrowRight size={16} />
+          <Button variant="primary" size="lg" onClick={() => nav(loggedIn ? '/dashboard' : '/auth')} className="glow-orange">
+            {loggedIn ? <><LayoutDashboard size={16} /> Go to Dashboard</> : <>Start Solving Free <ArrowRight size={16} /></>}
           </Button>
-          <Button variant="secondary" size="lg" onClick={() => nav('/auth')}>
-            Sign In
-          </Button>
+          {!loggedIn && (
+            <Button variant="secondary" size="lg" onClick={() => nav('/auth')}>
+              Sign In
+            </Button>
+          )}
         </motion.div>
 
         {/* Stats */}

@@ -68,7 +68,7 @@ export default function AuthPage() {
         profile_pic: decodeURIComponent(profilePic || ''),
       }))
       toast.success('Signed in with Google!')
-      nav('/')
+      nav('/dashboard')
     }
   }, [])
 
@@ -82,7 +82,7 @@ export default function AuthPage() {
     if (!loginForm.password) errs.password = 'Password is required'
     if (Object.keys(errs).length) { setErrors(errs); return }
     const res = await dispatch(loginUser(loginForm))
-    if (loginUser.fulfilled.match(res)) { toast.success('Welcome back!'); nav('/') }
+    if (loginUser.fulfilled.match(res)) { toast.success('Welcome back!'); nav('/dashboard') }
     else toast.error(res.payload || 'Login failed')
   }
 
@@ -100,7 +100,7 @@ export default function AuthPage() {
     if (signupForm.password.length < 6) errs.password = 'Minimum 6 characters'
     if (Object.keys(errs).length) { setErrors(errs); return }
     const res = await dispatch(signupUser(signupForm))
-    if (signupUser.fulfilled.match(res)) { toast.success('Account created!'); nav('/') }
+    if (signupUser.fulfilled.match(res)) { toast.success('Account created!'); nav('/dashboard') }
     else toast.error(res.payload || 'Signup failed')
   }
 
