@@ -1,81 +1,84 @@
+// src/store/slices/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+import axios from 'axios'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-// ── Mock helpers ───────────────────────────────────────────────────────────────
-const delay = (ms) => new Promise(r => setTimeout(r, ms))
-const MOCK_TOKEN = 'mock-jwt-token'
-
-const saveSession = (user) => {
-  localStorage.setItem('aa_token', MOCK_TOKEN)
-  localStorage.setItem('aa_user', JSON.stringify(user))
+const saveSession = (token, user) => {
+  localStorage.setItem('aa_token', token)
+  localStorage.setItem('aa_user',  JSON.stringify(user))
 }
 const clearSession = () => {
   localStorage.removeItem('aa_token')
   localStorage.removeItem('aa_user')
 }
 
-// ── Thunks ─────────────────────────────────────────────────────────────────────
-
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
 export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      // BACKEND: const data = await authApi.login({ email, password })
-      // BACKEND: saveSession(data.user); return { user: data.user, token: data.token }
-      await delay(900)
-      const user = { id: '1', name: 'Demo User', email, profile: {} }
-      saveSession(user)
-      return { user, token: MOCK_TOKEN }
+      const { data } = await axios.post(`${API_URL}/user/login`, { email, password })
+      const { token, email: userEmail, profile_pic, name } = data.data
+      const user = { email: userEmail, profile_pic, name }
+      saveSession(token, user)
+      return { user, token }
     } catch (err) {
-      return rejectWithValue(err.response?.data?.error || err.message)
+      return rejectWithValue(err.response?.data?.message || err.message)
     }
   }
 )
 
+// ── SIGNUP ────────────────────────────────────────────────────────────────────
 export const signupUser = createAsyncThunk(
   'auth/signup',
   async ({ name, email, password }, { rejectWithValue }) => {
     try {
-      // BACKEND: await authApi.signup({ name, email, password }); return { email, name }
-      await delay(1000)
-      return { email, name }
+      const { data } = await axios.post(`${API_URL}/user/signup`, { name, email, password })
+      const { token, email: userEmail, profile_pic } = data.data
+      const user = { email: userEmail, profile_pic, name }
+      saveSession(token, user)
+      return { user, token }
     } catch (err) {
-      return rejectWithValue(err.response?.data?.error || err.message)
+      return rejectWithValue(err.response?.data?.message || err.message)
     }
   }
 )
 
-export const verifyOtp = createAsyncThunk(
-  'auth/verifyOtp',
-  async ({ email, otp, name }, { rejectWithValue }) => {
-    try {
-      // BACKEND: const data = await authApi.verifyOtp({ email, otp })
-      // BACKEND: saveSession(data.user); return { user: data.user, token: data.token }
-      await delay(800)
-      if (otp.length < 6) throw new Error('Invalid OTP')
-      const user = { id: '2', name: name || 'New User', email, profile: {} }
-      saveSession(user)
-      return { user, token: MOCK_TOKEN }
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.error || err.message || 'Invalid OTP')
-    }
-  }
-)
-
+// ── GOOGLE OAUTH ──────────────────────────────────────────────────────────────
 export const loginWithGoogle = createAsyncThunk(
   'auth/loginWithGoogle',
   async (_, { rejectWithValue }) => {
     try {
-      // BACKEND: window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`
-      await delay(700)
-      const user = { id: 'g1', name: 'Google User', email: 'google@example.com', profile: {} }
-      saveSession(user)
-      return { user, token: MOCK_TOKEN }
+      const { data } = await axios.get(`${API_URL}/user/generateUrl`)
+      window.location.href = data.data.auth_url
     } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message)
+    }
+  }
+)
+
+// ── RESTORE SESSION (called on app boot) ──────────────────────────────────────
+// Reads token + user from localStorage so page refresh keeps user logged in
+export const restoreSession = createAsyncThunk(
+  'auth/restoreSession',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token   = localStorage.getItem('aa_token')
+      const rawUser = localStorage.getItem('aa_user')
+      if (!token || !rawUser) return rejectWithValue('No session')
+
+      // BACKEND: Optionally verify token is still valid
+      // await axios.get(`${API_URL}/user/me`, { headers: { Authorization: `Bearer ${token}` } })
+
+      return { token, user: JSON.parse(rawUser) }
+    } catch (err) {
+      clearSession()
       return rejectWithValue(err.message)
     }
   }
 )
 
+// ── LOGOUT ────────────────────────────────────────────────────────────────────
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
   clearSession()
 })
@@ -84,13 +87,21 @@ export const logoutUser = createAsyncThunk('auth/logout', async () => {
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    user:    null,
-    token:   null,
-    loading: false,
-    error:   null,
+    user:             null,
+    token:            null,
+    loading:          false,
+    error:            null,
+    sessionRestored:  false,
   },
   reducers: {
-    clearError(state) { state.error = null },
+    clearError(state)            { state.error = null },
+    setGoogleSession(state, { payload }) {
+      state.user    = { email: payload.email, profile_pic: payload.profile_pic, name: payload.name }
+      state.token   = payload.token
+      state.loading = false
+      state.error   = null
+      saveSession(payload.token, state.user)
+    },
   },
   extraReducers: (builder) => {
     const pending  = (s)         => { s.loading = true;  s.error = null }
@@ -106,27 +117,34 @@ const authSlice = createSlice({
     builder.addCase(loginUser.rejected,       rejected)
 
     builder.addCase(signupUser.pending,       pending)
-    builder.addCase(signupUser.fulfilled,     (s) => { s.loading = false })
+    builder.addCase(signupUser.fulfilled,     session)
     builder.addCase(signupUser.rejected,      rejected)
 
-    builder.addCase(verifyOtp.pending,        pending)
-    builder.addCase(verifyOtp.fulfilled,      session)
-    builder.addCase(verifyOtp.rejected,       rejected)
-
     builder.addCase(loginWithGoogle.pending,  pending)
-    builder.addCase(loginWithGoogle.fulfilled,session)
     builder.addCase(loginWithGoogle.rejected, rejected)
 
-    builder.addCase(logoutUser.fulfilled,     (s) => {
-      s.user = null; s.token = null; s.loading = false; s.error = null
+    // ── Restore session ──
+    builder.addCase(restoreSession.pending,  (s) => { s.loading = true })
+    builder.addCase(restoreSession.rejected, (s) => { s.loading = false; s.sessionRestored = true })
+    builder.addCase(restoreSession.fulfilled, (s, { payload }) => {
+      s.loading         = false
+      s.sessionRestored = true
+      s.user            = payload.user
+      s.token           = payload.token
+    })
+
+    builder.addCase(logoutUser.fulfilled, (s) => {
+      s.user = null; s.token = null; s.loading = false; s.error = null; s.sessionRestored = true
     })
   },
 })
 
-export const { clearError } = authSlice.actions
+export const { clearError, setGoogleSession } = authSlice.actions
 export default authSlice.reducer
 
-// ── Selectors ──────────────────────────────────────────────────────────────────
-export const selectUser        = (s) => s.auth.user
-export const selectAuthLoading = (s) => s.auth.loading
-export const selectAuthError   = (s) => s.auth.error
+// ── Selectors ─────────────────────────────────────────────────────────────────
+export const selectUser             = (s) => s.auth.user
+export const selectToken            = (s) => s.auth.token
+export const selectAuthLoading      = (s) => s.auth.loading
+export const selectAuthError        = (s) => s.auth.error
+export const selectSessionRestored  = (s) => s.auth.sessionRestored
