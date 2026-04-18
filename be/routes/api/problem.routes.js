@@ -11,7 +11,6 @@ router.get('/',problemController.getAllProblems);
 router.get('/:id',problemController.getProblemById);
 
 router.put('/:id',problemController.updateProblem);
-
 // router.delete('/:id',problemController.deleteProblem);
 
 
