@@ -4,9 +4,7 @@ export default function OtpInput({ length = 6, onChange, error }) {
   const [values, setValues] = useState(Array(length).fill(''))
   const refs = useRef([])
 
-  useEffect(() => {
-    refs.current[0]?.focus()
-  }, [])
+  useEffect(() => { refs.current[0]?.focus() }, [])
 
   const handleChange = (idx, e) => {
     const val = e.target.value.replace(/\D/g, '').slice(-1)
@@ -18,11 +16,9 @@ export default function OtpInput({ length = 6, onChange, error }) {
   }
 
   const handleKeyDown = (idx, e) => {
-    if (e.key === 'Backspace' && !values[idx] && idx > 0) {
-      refs.current[idx - 1]?.focus()
-    }
-    if (e.key === 'ArrowLeft' && idx > 0) refs.current[idx - 1]?.focus()
-    if (e.key === 'ArrowRight' && idx < length - 1) refs.current[idx + 1]?.focus()
+    if (e.key === 'Backspace' && !values[idx] && idx > 0) refs.current[idx - 1]?.focus()
+    if (e.key === 'ArrowLeft'  && idx > 0)               refs.current[idx - 1]?.focus()
+    if (e.key === 'ArrowRight' && idx < length - 1)      refs.current[idx + 1]?.focus()
   }
 
   const handlePaste = (e) => {
@@ -32,8 +28,7 @@ export default function OtpInput({ length = 6, onChange, error }) {
     pasted.split('').forEach((ch, i) => { next[i] = ch })
     setValues(next)
     onChange?.(next.join(''))
-    const focusIdx = Math.min(pasted.length, length - 1)
-    refs.current[focusIdx]?.focus()
+    refs.current[Math.min(pasted.length, length - 1)]?.focus()
   }
 
   return (
@@ -47,18 +42,22 @@ export default function OtpInput({ length = 6, onChange, error }) {
             inputMode="numeric"
             maxLength={1}
             value={val}
-            onChange={e => handleChange(idx, e)}
+            onChange={e  => handleChange(idx, e)}
             onKeyDown={e => handleKeyDown(idx, e)}
             onPaste={handlePaste}
-            className={`w-11 h-13 text-center text-lg font-semibold rounded-lg bg-[#0d0d15] border outline-none
-              transition-all duration-150
-              focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:scale-105
-              ${error ? 'border-red-500/50 text-red-400' : val ? 'border-blue-500/60 text-blue-400' : 'border-[#1e1e2e] text-[#f1f1f5]'}`}
+            className={`w-11 text-center text-lg font-bold rounded-lg border outline-none bg-white
+              text-black transition-all duration-150 focus:scale-105
+              ${error
+                ? 'border-red-400 focus:ring-2 focus:ring-red-200'
+                : val
+                  ? 'border-orange-500 focus:ring-2 focus:ring-orange-200'
+                  : 'border-gray-300 hover:border-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-200'
+              }`}
             style={{ height: '52px', fontFamily: 'JetBrains Mono, monospace' }}
           />
         ))}
       </div>
-      {error && <p className="text-center text-xs text-red-400">{error}</p>}
+      {error && <p className="text-center text-xs font-medium text-red-600">{error}</p>}
     </div>
   )
 }
