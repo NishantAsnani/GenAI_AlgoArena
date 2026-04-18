@@ -3,7 +3,7 @@ const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 const { STATUS_CODE } = require("../utils/constants");
 const userServices = require("../services/user.service");
 const Joi=require('joi');
-
+const UserProfile = require("../models/UserProfile");
 
 async function getAllUsers(req, res) {
   const querySchema = Joi.object({
@@ -159,6 +159,15 @@ async function editUser(req, res) {
       );
     }
 
+    if(userId !== req.user._id.toString()){
+      return sendErrorResponse(
+        res,
+        {},
+        "Unauthorized: You can only edit your own profile",
+        STATUS_CODE.UNAUTHORIZED
+      );
+    }
+
 
     
 
@@ -183,11 +192,77 @@ async function editUser(req, res) {
   }
 }
 
+async function editUserProfile(req, res) {
+  const editProfileSchema = Joi.object({
+      location: Joi.string().allow(''),
+      education: Joi.string().allow(''),
+      bio: Joi.string().allow(''),
+      grad_year: Joi.number().integer().min(1900).max(new Date().getFullYear()),
+      mobile: Joi.string().allow(''),
+      github: Joi.string().uri().allow(''),
+      linkedin: Joi.string().uri().allow(''),
+      twitter: Joi.string().uri().allow(''),
+      resume_url: Joi.string().uri().allow(''),
+      leetcode: Joi.string().uri().allow(''),
+      codeforces: Joi.string().uri().allow(''),
+      gfg: Joi.string().uri().allow(''),
+      hackerrank: Joi.string().uri().allow('')
+  });
+
+  const userIdSchema = Joi.object({
+      id: Joi.string().hex().required()
+  });
+
+  try{
+      const {error: paramError, value: paramValue} = userIdSchema.validate(req.params);
+    
+      if(paramError){
+          return sendErrorResponse(res, paramError.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+      }
+
+      const userId = paramValue.id;
+
+      const {error, value} = editProfileSchema.validate(req.body);
+      if(error){
+          return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+      }
+
+      if(userId !== req.user.id.toString()){
+      return sendErrorResponse(
+        res,
+        {},
+        "Unauthorized: You can only edit your own profile",
+        STATUS_CODE.UNAUTHORIZED
+      );
+    }
+
+      let userProfile = await UserProfile.findOne({ user_id: userId });
+
+      if(!userProfile){
+          userProfile = new UserProfile({
+              user_id: userId,
+              ...value
+          });
+      } else {
+          Object.assign(userProfile, value);
+      }
+
+      await userProfile.save();
+    
+      return sendSuccessResponse(res, userProfile, "User profile updated successfully", STATUS_CODE.OK);
+  }catch(err){
+    console.log(err);
+      return sendErrorResponse(res, err, "Failed to update user profile");
+  }
+
+  
+}
 
 
 module.exports={
     getAllUsers,
     getUserById,
     deleteUser,
-    editUser
+    editUser,
+    editUserProfile
 }

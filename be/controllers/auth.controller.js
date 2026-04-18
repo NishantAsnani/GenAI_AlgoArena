@@ -7,7 +7,7 @@ const Joi = require("joi");
 const authServices = require("../services/auth.service");
 const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret";
 const { getOAuthClient } = require("../utils/helper");
-const Joi=require('joi');
+
 async function Login(req, res) {
   const loginSchema = Joi.object({
     email: Joi.string().email().required(),

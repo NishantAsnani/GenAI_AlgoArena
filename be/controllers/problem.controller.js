@@ -10,7 +10,7 @@ const { submissionQueue } = require('../utils/queue');
 async function addProblem(req,res){
     const problemSchema=Joi.object({
         title:Joi.string().required(),
-        lesson_id:Joi.string().hex().required(),
+        lesson_id:Joi.string().required(),
         description_md:Joi.string().required(),
         difficulty:Joi.string().valid('Easy','Medium','Hard').required(),
         tags:Joi.array().items(Joi.string()),

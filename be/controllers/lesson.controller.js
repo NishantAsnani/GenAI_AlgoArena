@@ -37,3 +37,79 @@ async function createLesson(req, res) {
         return sendErrorResponse(res, err, "Failed to create lesson");
     }
 }
+
+async function getAllLessons(req, res) {
+    const querySchema = Joi.object({
+        page: Joi.number().integer().min(1).default(1),
+        limit: Joi.number().integer().min(1).max(100).default(10)
+    });
+
+    try{
+        const {error, value} = querySchema.validate(req.query);
+        if(error){
+            return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+        }
+
+        const {page, limit} = value;
+        const offset = (page - 1) * limit;
+
+        const allLessons = await Lesson.find({
+            skip: offset,
+            limit: limit
+        }).populate('problems');
+
+        return sendSuccessResponse(res, { lessons: allLessons }, "Lessons retrieved successfully", STATUS_CODE.OK);
+    }catch(err){
+        return sendErrorResponse(res, err, "Failed to retrieve lessons");
+    }
+}
+
+async function getLessonById(req, res) {
+    const { id } = req.params;
+    try {
+        const lesson = await Lesson.findByPk(id);
+        if (!lesson) {
+            return sendErrorResponse(res, {}, "Lesson not found", STATUS_CODE.NOT_FOUND);
+        }
+        return sendSuccessResponse(res, lesson, "Lesson retrieved successfully", STATUS_CODE.OK);
+    } catch (err) {
+        return sendErrorResponse(res, err, "Failed to retrieve lesson");
+    }
+}
+
+async function updateLesson(req, res) {
+    const { id } = req.params;
+    const lessonSchema = Joi.object({
+        title: Joi.string(),
+        content_type: Joi.string(),
+        content_md: Joi.string(),
+        video_urls: Joi.array().items(Joi.string()),
+        order_index: Joi.number().integer().min(0),
+        xp_reward: Joi.number().integer().min(0),
+        problems: Joi.array().items(Joi.string().hex())
+    });
+    try {
+        const { error, value } = lessonSchema.validate(req.body);
+        if (error) {
+            return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+        }
+        const lesson = await Lesson.findById(id);
+        if (!lesson) {
+            return sendErrorResponse(res, {}, "Lesson not found", STATUS_CODE.NOT_FOUND);
+        }
+
+        await Lesson.findByIdAndUpdate(id, value, { new: true });
+
+        return sendSuccessResponse(res, lesson, "Lesson updated successfully", STATUS_CODE.OK);
+    } catch (err) {
+        console.log(err);
+        return sendErrorResponse(res, err, "Failed to update lesson");
+    }
+}
+
+module.exports={
+    createLesson,
+    getAllLessons,
+    getLessonById,
+    updateLesson
+}

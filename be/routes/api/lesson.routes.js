@@ -1,18 +1,17 @@
 const express=require('express');
 const router=express.Router();
 const lessonController=require('../../controllers/lesson.controller');
+const auth = require('../../middleware/auth');
 
 
+router.get('/',auth,lessonController.getAllLessons);
 
-router.post('/',lessonController.addLesson);
+router.get('/:id',auth,lessonController.getLessonById);
 
-// router.get('/',lessonController.getAllLessons);
+router.post('/',auth,lessonController.createLesson);
 
-// router.get('/:id',lessonController.getLessonById);
+router.patch('/:id',auth,lessonController.updateLesson);
 
-// router.put('/:id',lessonController.updateLesson);
-
-// router.delete('/:id',lessonController.deleteLesson);
 
 
 module.exports=router;

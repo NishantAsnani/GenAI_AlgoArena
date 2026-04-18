@@ -15,12 +15,16 @@ async function getAllModules(req, res) {
             return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
         }
 
+        
+
         const {page=1, limit=10} = value;
         const offset = (page - 1) * limit;
-        const modules = await Module.find({
-            offset,
-            limit
-        }).populate('lessons');
+        const modules = await Module.find().skip(offset).limit(limit).populate({
+            path: 'lessons',
+            populate: {
+                path: 'problems'
+            }
+        })  ;
 
     
         return sendSuccessResponse(res, modules, "Modules fetched successfully");
