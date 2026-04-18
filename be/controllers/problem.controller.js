@@ -3,6 +3,8 @@ const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 const { STATUS_CODE } = require("../utils/constants");
 // const problemServices=require('../services/problem.service');
 const Joi=require('joi');
+const axios=require('axios');
+const { submissionQueue } = require('../utils/queue');
 
 
 async function addProblem(req,res){
@@ -79,7 +81,7 @@ async function getAllProblems(req,res){
 
 async function getProblemById(req,res){
     const idSchema=Joi.object({
-        id:Joi.string().hex().required()
+        id:Joi.string().required()
     });
     try{
         const {error, value} = idSchema.validate(req.params);
@@ -155,9 +157,52 @@ async function updateProblem(req,res){
 }
 
 
+
+// async function getSubmissionResult(req, res) {
+//     const tokenSchema = Joi.object({
+//         token: Joi.string().required()
+//     });
+//     try {
+        
+//         const { error, value } = tokenSchema.validate(req.params);
+//         if (error) {
+//             return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+//         }
+//         const { token } = value;
+//         console.log(`Fetching result for token: ${token}`);
+//         const url = `https://judge0-ce.p.rapidapi.com/submissions/${token}?base64_encoded=true`;
+//         const headers = {
+//             'x-rapidapi-key': process.env.JUDGE0_KEY,
+//             'x-rapidapi-host': process.env.JUDGE0_HOST,
+//             'Content-Type': 'application/json'
+//         }
+//         const response = await axios.get(url, { headers: headers });
+//         const result = {
+//             stdout: response.data.stdout ? Buffer.from(response.data.stdout, 'base64').toString('utf-8') : null,
+//             stderr: response.data.stderr ? Buffer.from(response.data.stderr, 'base64').toString('utf-8') : null,
+//             compile_output: response.data.compile_output ? Buffer.from(response.data.compile_output, 'base64').toString('utf-8') : null,
+//             message: response.data.message,
+//             status: response.data.status
+//         };
+//         return sendSuccessResponse(
+//             res,
+//             { result: result },
+//             "Submission Result Retrieved Successfully",
+//             STATUS_CODE.OK
+//         );
+//     } catch (err) {
+//         sendErrorResponse(
+//             res,
+//             {},
+//             `Error Retrieving Submission Result: ${err.message}`,
+//             STATUS_CODE.INTERNAL_SERVER_ERROR
+//         );
+//     }
+// }
+
 module.exports={
     addProblem,
     getAllProblems,
     getProblemById,
-    updateProblem
+    updateProblem,
 }
