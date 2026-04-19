@@ -96,10 +96,11 @@ const authSlice = createSlice({
   reducers: {
     clearError(state)            { state.error = null },
     setGoogleSession(state, { payload }) {
-      state.user    = { email: payload.email, profile_pic: payload.profile_pic, name: payload.name }
-      state.token   = payload.token
-      state.loading = false
-      state.error   = null
+      state.user            = { email: payload.email, profile_pic: payload.profile_pic, name: payload.name }
+      state.token           = payload.token
+      state.loading         = false
+      state.error           = null
+      state.sessionRestored = true
       saveSession(payload.token, state.user)
     },
   },
@@ -107,9 +108,10 @@ const authSlice = createSlice({
     const pending  = (s)         => { s.loading = true;  s.error = null }
     const rejected = (s, a)      => { s.loading = false; s.error = a.payload }
     const session  = (s, { payload }) => {
-      s.loading = false
-      s.user    = payload.user
-      s.token   = payload.token
+      s.loading         = false
+      s.sessionRestored = true
+      s.user            = payload.user
+      s.token           = payload.token
     }
 
     builder.addCase(loginUser.pending,        pending)

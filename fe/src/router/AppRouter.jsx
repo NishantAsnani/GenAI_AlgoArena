@@ -1,3 +1,4 @@
+// src/router/AppRouter.jsx
 import { useEffect }                               from 'react'
 import { BrowserRouter, Routes, Route, Navigate }  from 'react-router-dom'
 import { useAppDispatch, useAppSelector }          from '../hooks/redux'
@@ -6,6 +7,7 @@ import LandingPage   from '../pages/LandingPage'
 import AuthPage      from '../pages/AuthPage'
 import DashboardPage from '../pages/DashboardPage'
 import ProfilePage   from '../pages/ProfilePage'
+import ProblemPage   from '../pages/ProblemPage'    // ← NEW
 
 function ProtectedRoute({ children }) {
   const token           = useAppSelector(selectToken)
@@ -28,11 +30,19 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/"          element={<LandingPage />} />
-        <Route path="/auth"      element={<GuestRoute><AuthPage /></GuestRoute>} />
+        {/* Public */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Guest only */}
+        <Route path="/auth" element={<GuestRoute><AuthPage /></GuestRoute>} />
+
+        {/* Protected */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/profile"   element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="*"          element={<Navigate to="/" replace />} />
+        <Route path="/problem/:id" element={<ProtectedRoute><ProblemPage /></ProtectedRoute>} />  {/* ← NEW */}
+
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

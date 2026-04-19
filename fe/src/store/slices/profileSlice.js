@@ -1,21 +1,19 @@
+// src/store/slices/profileSlice.js
+// ─────────────────────────────────────────────────────────────────────────────
+// Profile Slice — stores and updates user profile data per user (keyed by email)
+// CURRENT MODE : localStorage  |  BACKEND MODE: Uncomment "BACKEND:" sections
+// ─────────────────────────────────────────────────────────────────────────────
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
 
-const API_URL   = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-const profileKey = (email) => `aa_profile_${email}`
+const profileKey  = (email) => `aa_profile_${email}`
 
-const loadLocal = (email) => {
+const loadProfile = (email) => {
   if (!email) return {}
   try { return JSON.parse(localStorage.getItem(profileKey(email))) || {} } catch { return {} }
 }
-const saveLocal = (email, data) => {
+const saveProfile = (email, data) => {
   if (!email) return
   localStorage.setItem(profileKey(email), JSON.stringify(data))
-}
-
-const authHeader = () => {
-  const token = localStorage.getItem('aa_token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 // ── LOAD PROFILE ──────────────────────────────────────────────────────────────
@@ -23,29 +21,41 @@ export const loadUserProfile = createAsyncThunk(
   'profile/load',
   async (email, { rejectWithValue }) => {
     try {
-      return loadLocal(email)
+      // BACKEND: Uncomment below & delete localStorage block when backend is ready
+      // const { data } = await api.get('/user/profile')
+      // return data.profile
+
+      // ── LOCAL ──
+      return loadProfile(email)
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message)
+      return rejectWithValue(err.message)
     }
   }
 )
 
+// ── SAVE PROFILE ──────────────────────────────────────────────────────────────
 export const saveUserProfile = createAsyncThunk(
   'profile/save',
   async ({ email, profile }, { rejectWithValue }) => {
     try {
-      saveLocal(email, profile)
+      // BACKEND: Uncomment below & delete localStorage block when backend is ready
+      // const { data } = await api.put('/user/profile', profile)
+      // return data.profile
+
+      // ── LOCAL ──
+      saveProfile(email, profile)
       return profile
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message)
+      return rejectWithValue(err.message)
     }
   }
 )
 
+// ── Slice ──────────────────────────────────────────────────────────────────────
 const profileSlice = createSlice({
   name: 'profile',
   initialState: {
-    data:    {},
+    data:    {},     // { location, education, gradYear, mobile, github, linkedin, twitter, leetcode, codeforces, gfg, hackerrank, resume }
     loading: false,
     saving:  false,
     error:   null,
@@ -57,6 +67,7 @@ const profileSlice = createSlice({
       state.saving  = false
       state.error   = null
     },
+    // Optimistically patch a single field in state
     patchField: (state, { payload }) => {
       state.data = { ...state.data, ...payload }
     },
@@ -82,6 +93,7 @@ const profileSlice = createSlice({
 
 export const { resetProfileState, patchField } = profileSlice.actions
 
+// ── Selectors ─────────────────────────────────────────────────────────────────
 export const selectProfile        = (s) => s.profile.data
 export const selectProfileLoading = (s) => s.profile.loading
 export const selectProfileSaving  = (s) => s.profile.saving

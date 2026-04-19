@@ -12,7 +12,7 @@ function Logo() {
   const nav = useNavigate()
   return (
     <button
-      onClick={() => nav('/')}
+      onClick={() => nav('/dashboard')}
       className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
     >
       <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center flex-shrink-0">
