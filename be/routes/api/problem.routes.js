@@ -4,10 +4,13 @@ const problemController=require('../../controllers/problem.controller');
 
 
 
-router.post('/add',problemController.addProblem);
+router.post('/',problemController.addProblem);
+
 router.get('/',problemController.getAllProblems);
+
 router.get('/:id',problemController.getProblemById);
-router.put('/:id',problemController.updateProblem);
+
+router.patch('/:id',problemController.updateProblem);
 // router.delete('/:id',problemController.deleteProblem);
 
 

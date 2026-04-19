@@ -14,7 +14,7 @@ const userProfileSchema = new Schema({
   // ── Basic Info ──────────────────────────────────────────────────────────
   location:    { type: String, default: '' },
   education:   { type: String, default: '' },
-  grad_year:   { type: String, default: '' },
+  grad_year:   { type: Number, default: '' },
   mobile:      { type: String, default: '' },
   bio:         { type: String, default: '' },
 

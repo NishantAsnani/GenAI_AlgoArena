@@ -20,6 +20,9 @@ router.post('/signup',upload.single('avatar_url'),authControllers.Signup)
 
 router.patch('/:id',auth,userControllers.editUser)
 
+router.patch('/profile/:id',auth,userControllers.editUserProfile)
+
+
 router.delete('/:id',auth,userControllers.deleteUser)    
 
 

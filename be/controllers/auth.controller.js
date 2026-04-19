@@ -23,6 +23,8 @@ async function Login(req, res) {
     const { email, password } = value;
     const user = await User.findOne({ email });
 
+    console.log(user) // Debugging line to check the user object retrieved from the database
+
     if (!user) {
       return sendErrorResponse(res, {}, "Invalid Credentials", STATUS_CODE.NOT_FOUND);
     }
@@ -56,7 +58,13 @@ async function Login(req, res) {
       STATUS_CODE.SUCCESS
     );
   } catch (err) {
-    return sendErrorResponse(res, {}, "Internal Server Error", STATUS_CODE.INTERNAL_SERVER_ERROR);
+    console.log(err)
+    return sendErrorResponse(
+      res,
+      {},
+      "Internal Server Error",
+      STATUS_CODE.UNAUTHORIZED
+    );
   }
 }
 
@@ -64,12 +72,12 @@ async function Signup(req, res) {
   const signupSchema = Joi.object({
     name: Joi.string().required(),
     email: Joi.string().email().required(),
-    password: Joi.string().min(6).pattern(/^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]+$/).required()
-      .messages({
-        'string.pattern.base': 'Password must contain at least one uppercase letter and one number, and be alphanumeric',
-        'string.min': 'Password must be at least 6 characters long',
-        'any.required': 'Password is required'
-      })
+    password: Joi.string().min(6).pattern(/^(?=.*[A-Z])(?=.*\d).*$/).required()
+    .messages({
+    'string.pattern.base': 'Password must contain at least one uppercase letter and one number, and be alphanumeric',
+    'string.min': 'Password must be at least 8 characters long',
+    'any.required': 'Password is required'
+  })
   });
   try {
     const { error, value } = signupSchema.validate(req.body);
