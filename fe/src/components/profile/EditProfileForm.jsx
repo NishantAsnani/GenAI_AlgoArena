@@ -1,14 +1,10 @@
-// src/components/profile/EditProfileForm.jsx
-// Full edit form — Basic Info + Social Links + Coding Profiles
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Save, Loader2, Check } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../hooks/redux'
 import { saveUserProfile, selectProfile, selectProfileSaving } from '../../store/slices/profileSlice'
-import { selectUser } from '../../store/slices/authSlice'
 import toast from 'react-hot-toast'
 
-// ── Reusable field components ──────────────────────────────────────────────────
 function SectionCard({ title, children }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden mb-4">
@@ -68,37 +64,30 @@ function SaveBtn({ saving, saved, onClick, label = 'Save Changes' }) {
   )
 }
 
-// ── EditProfileForm ────────────────────────────────────────────────────────────
 export default function EditProfileForm() {
   const dispatch = useAppDispatch()
-  const user     = useAppSelector(selectUser)
   const profile  = useAppSelector(selectProfile)
   const saving   = useAppSelector(selectProfileSaving)
 
-  // ── Basic info ────────────────────────────────────────────────────────────
   const [location,  setLocation]  = useState('')
   const [education, setEducation] = useState('')
   const [gradYear,  setGradYear]  = useState('')
   const [mobile,    setMobile]    = useState('')
 
-  // ── Social links ──────────────────────────────────────────────────────────
   const [github,   setGithub]   = useState('')
   const [linkedin, setLinkedin] = useState('')
   const [twitter,  setTwitter]  = useState('')
   const [resume,   setResume]   = useState('')
 
-  // ── Coding profiles ───────────────────────────────────────────────────────
   const [leetcode,   setLeetcode]   = useState('')
   const [codeforces, setCodeforces] = useState('')
   const [gfg,        setGfg]        = useState('')
   const [hackerrank, setHackerrank] = useState('')
 
-  // Saved states per section
   const [savedBasic,  setSavedBasic]  = useState(false)
   const [savedSocial, setSavedSocial] = useState(false)
   const [savedCoding, setSavedCoding] = useState(false)
 
-  // Load existing profile into form fields
   useEffect(() => {
     if (!profile) return
     setLocation(profile.location   || '')
@@ -121,17 +110,14 @@ export default function EditProfileForm() {
     leetcode, codeforces, gfg, hackerrank,
   })
 
-  const handleSave = async (section, setSaved) => {
-    const result = await dispatch(saveUserProfile({
-      email:   user?.email,
-      profile: currentProfile(),
-    }))
+  const handleSave = async (setSaved) => {
+    const result = await dispatch(saveUserProfile(currentProfile()))
     if (saveUserProfile.fulfilled.match(result)) {
       toast.success('Profile saved!')
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } else {
-      toast.error('Failed to save')
+      toast.error(result.payload || 'Failed to save')
     }
   }
 
@@ -143,46 +129,16 @@ export default function EditProfileForm() {
       animate={{ opacity: 1, y: 0  }}
       transition={{ duration: 0.3 }}
     >
-      {/* ── Basic Info ──────────────────────────────────────────────── */}
       <SectionCard title="Basic Information">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Name">
-            <TextInput
-              value={user?.name || user?.email?.split('@')[0] || ''}
-              onChange={() => {}}
-              placeholder="Your name"
-              disabled
-            />
-          </Field>
-          <Field label="Email">
-            <TextInput
-              value={user?.email || ''}
-              onChange={() => {}}
-              placeholder="Email"
-              disabled
-            />
-          </Field>
           <Field label="Location">
-            <TextInput
-              value={location}
-              onChange={setLocation}
-              placeholder="City, Country"
-            />
+            <TextInput value={location}  onChange={setLocation}  placeholder="City, Country" />
           </Field>
           <Field label="Mobile">
-            <TextInput
-              value={mobile}
-              onChange={setMobile}
-              placeholder="+91 99999 99999"
-              type="tel"
-            />
+            <TextInput value={mobile}    onChange={setMobile}    placeholder="+91 99999 99999" type="tel" />
           </Field>
           <Field label="Education">
-            <TextInput
-              value={education}
-              onChange={setEducation}
-              placeholder="University / College"
-            />
+            <TextInput value={education} onChange={setEducation} placeholder="University / College" />
           </Field>
           <Field label="Graduation Year">
             <select
@@ -197,10 +153,9 @@ export default function EditProfileForm() {
             </select>
           </Field>
         </div>
-        <SaveBtn saving={saving} saved={savedBasic} onClick={() => handleSave('basic', setSavedBasic)} />
+        <SaveBtn saving={saving} saved={savedBasic} onClick={() => handleSave(setSavedBasic)} />
       </SectionCard>
 
-      {/* ── Social Links ────────────────────────────────────────────── */}
       <SectionCard title="Social Links">
         <div className="grid grid-cols-2 gap-4">
           <Field label="GitHub">
@@ -216,10 +171,9 @@ export default function EditProfileForm() {
             <TextInput value={resume}   onChange={setResume}   placeholder="https://drive.google.com/..." />
           </Field>
         </div>
-        <SaveBtn saving={saving} saved={savedSocial} onClick={() => handleSave('social', setSavedSocial)} />
+        <SaveBtn saving={saving} saved={savedSocial} onClick={() => handleSave(setSavedSocial)} />
       </SectionCard>
 
-      {/* ── Coding Profiles ─────────────────────────────────────────── */}
       <SectionCard title="Coding Profiles">
         <div className="grid grid-cols-2 gap-4">
           <Field label="LeetCode">
@@ -235,7 +189,7 @@ export default function EditProfileForm() {
             <TextInput value={gfg}        onChange={setGfg}        placeholder="https://auth.geeksforgeeks.org/user/username" />
           </Field>
         </div>
-        <SaveBtn saving={saving} saved={savedCoding} onClick={() => handleSave('coding', setSavedCoding)} />
+        <SaveBtn saving={saving} saved={savedCoding} onClick={() => handleSave(setSavedCoding)} />
       </SectionCard>
     </motion.div>
   )

@@ -1,10 +1,8 @@
-// src/components/profile/RecentSolved.jsx
-// Shows recently solved problems
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle, ArrowRight } from 'lucide-react'
 import { useAppSelector } from '../../hooks/redux'
 import { selectSolved }   from '../../store/slices/progressSlice'
-import { PROBLEMS }       from '../../data/problems'
+import { selectProblems } from '../../store/slices/problemsSlice'
 
 const DIFF_COLOR = {
   Easy:   { text: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
@@ -13,13 +11,14 @@ const DIFF_COLOR = {
 }
 
 export default function RecentSolved() {
-  const nav    = useNavigate()
-  const solved = useAppSelector(selectSolved)
+  const nav      = useNavigate()
+  const solved   = useAppSelector(selectSolved)
+  const problems = useAppSelector(selectProblems)
 
-  const solvedProblems = PROBLEMS
-    .filter(p => solved.includes(p.id))
-    .slice(-5)          // last 5 solved
-    .reverse()          // most recent first
+  const solvedProblems = problems
+    .filter(p => solved.includes(p._id || p.id))
+    .slice(-5)
+    .reverse()
 
   if (solvedProblems.length === 0) {
     return (
@@ -57,11 +56,12 @@ export default function RecentSolved() {
         </button>
       </div>
       {solvedProblems.map((p, i) => {
-        const c = DIFF_COLOR[p.difficulty]
+        const c  = DIFF_COLOR[p.difficulty] || DIFF_COLOR.Easy
+        const id = p._id || p.id
         return (
           <button
-            key={p.id}
-            onClick={() => nav(`/problem/${p.id}`)}
+            key={id}
+            onClick={() => nav(`/problem/${id}`)}
             className={`w-full flex items-center justify-between px-5 py-3 text-left
               hover:bg-orange-50/40 transition-colors
               ${i < solvedProblems.length - 1 ? 'border-b border-gray-100' : ''}`}

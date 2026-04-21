@@ -1,61 +1,71 @@
-// src/store/slices/profileSlice.js
-// ─────────────────────────────────────────────────────────────────────────────
-// Profile Slice — stores and updates user profile data per user (keyed by email)
-// CURRENT MODE : localStorage  |  BACKEND MODE: Uncomment "BACKEND:" sections
-// ─────────────────────────────────────────────────────────────────────────────
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+import { userApi } from '../../api/auth'
 
-const profileKey  = (email) => `aa_profile_${email}`
-
-const loadProfile = (email) => {
-  if (!email) return {}
-  try { return JSON.parse(localStorage.getItem(profileKey(email))) || {} } catch { return {} }
-}
-const saveProfile = (email, data) => {
-  if (!email) return
-  localStorage.setItem(profileKey(email), JSON.stringify(data))
-}
-
-// ── LOAD PROFILE ──────────────────────────────────────────────────────────────
 export const loadUserProfile = createAsyncThunk(
   'profile/load',
-  async (email, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
-      // BACKEND: Uncomment below & delete localStorage block when backend is ready
-      // const { data } = await api.get('/user/profile')
-      // return data.profile
-
-      // ── LOCAL ──
-      return loadProfile(email)
+      const userId = getState().auth.user?.id
+      if (!userId) return rejectWithValue('No user ID')
+      const { data } = await userApi.getProfile(userId)
+      const { user, profile } = data.data
+      return {
+        location:   profile.location   || '',
+        education:  profile.education  || '',
+        gradYear:   profile.grad_year  || '',
+        mobile:     profile.mobile     || '',
+        bio:        profile.bio        || '',
+        github:     profile.github     || '',
+        linkedin:   profile.linkedin   || '',
+        twitter:    profile.twitter    || '',
+        resume:     profile.resume_url || '',
+        leetcode:   profile.leetcode   || '',
+        codeforces: profile.codeforces || '',
+        gfg:        profile.gfg        || '',
+        hackerrank: profile.hackerrank || '',
+      }
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(err.response?.data?.message || err.message)
     }
   }
 )
 
-// ── SAVE PROFILE ──────────────────────────────────────────────────────────────
 export const saveUserProfile = createAsyncThunk(
   'profile/save',
-  async ({ email, profile }, { rejectWithValue }) => {
+  async (profileData, { getState, rejectWithValue }) => {
     try {
-      // BACKEND: Uncomment below & delete localStorage block when backend is ready
-      // const { data } = await api.put('/user/profile', profile)
-      // return data.profile
-
-      // ── LOCAL ──
-      saveProfile(email, profile)
-      return profile
+      const userId = getState().auth.user?.id
+      if (!userId) return rejectWithValue('No user ID')
+      const payload = {
+        location:   profileData.location   || '',
+        education:  profileData.education  || '',
+        grad_year:  profileData.gradYear   ? Number(profileData.gradYear) : undefined,
+        mobile:     profileData.mobile     || '',
+        bio:        profileData.bio        || '',
+        github:     profileData.github     || '',
+        linkedin:   profileData.linkedin   || '',
+        twitter:    profileData.twitter    || '',
+        resume_url: profileData.resume     || '',
+        leetcode:   profileData.leetcode   || '',
+        codeforces: profileData.codeforces || '',
+        gfg:        profileData.gfg        || '',
+        hackerrank: profileData.hackerrank || '',
+      }
+      Object.keys(payload).forEach(k => {
+        if (payload[k] === '' || payload[k] === undefined) delete payload[k]
+      })
+      await userApi.updateProfile(userId, payload)
+      return profileData
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(err.response?.data?.message || err.message)
     }
   }
 )
 
-// ── Slice ──────────────────────────────────────────────────────────────────────
 const profileSlice = createSlice({
   name: 'profile',
   initialState: {
-    data:    {},     // { location, education, gradYear, mobile, github, linkedin, twitter, leetcode, codeforces, gfg, hackerrank, resume }
+    data:    {},
     loading: false,
     saving:  false,
     error:   null,
@@ -67,7 +77,6 @@ const profileSlice = createSlice({
       state.saving  = false
       state.error   = null
     },
-    // Optimistically patch a single field in state
     patchField: (state, { payload }) => {
       state.data = { ...state.data, ...payload }
     },
@@ -93,7 +102,6 @@ const profileSlice = createSlice({
 
 export const { resetProfileState, patchField } = profileSlice.actions
 
-// ── Selectors ─────────────────────────────────────────────────────────────────
 export const selectProfile        = (s) => s.profile.data
 export const selectProfileLoading = (s) => s.profile.loading
 export const selectProfileSaving  = (s) => s.profile.saving

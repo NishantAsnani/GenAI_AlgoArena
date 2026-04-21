@@ -12,6 +12,8 @@ router.get('/generateUrl',authControllers.generateRedirectUrl)
 
 router.get('/googleAuthUrl',authControllers.handleGoogleCallback)
 
+router.get('/profile/:id',auth,userControllers.getUserProfile)
+
 router.get('/:id',auth,userControllers.getUserById)
 
 router.post('/login',authControllers.Login)
@@ -22,8 +24,7 @@ router.patch('/:id',auth,userControllers.editUser)
 
 router.patch('/profile/:id',auth,userControllers.editUserProfile)
 
-
-router.delete('/:id',auth,userControllers.deleteUser)    
+router.delete('/:id',auth,userControllers.deleteUser)
 
 
 

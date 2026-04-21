@@ -1,13 +1,7 @@
-// src/pages/ProfilePage.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Module: profile
-// Protected — loads per-user profile from localStorage (or backend later)
-// Two views: "view" (default) and "edit"
-// ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect } from 'react'
 import { useNavigate }         from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, LayoutDashboard, User, Settings } from 'lucide-react'
+import { LayoutDashboard, User, Settings } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { selectUser }          from '../store/slices/authSlice'
 import { loadUserProfile }     from '../store/slices/profileSlice'
@@ -17,14 +11,12 @@ import ProfileStats            from '../components/profile/ProfileStats'
 import EditProfileForm         from '../components/profile/EditProfileForm'
 import RecentSolved            from '../components/profile/RecentSolved'
 
-// ── Topbar ────────────────────────────────────────────────────────────────────
 function ProfileTopbar({ activeTab, onTabChange }) {
   const nav = useNavigate()
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
-        {/* Logo */}
         <button
           onClick={() => nav('/dashboard')}
           className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
@@ -33,11 +25,10 @@ function ProfileTopbar({ activeTab, onTabChange }) {
             <span className="font-mono text-white text-[13px]">&gt;_</span>
           </div>
           <span className="font-semibold text-[15px] text-black tracking-tight">
-            Code<span className="text-orange-500">Arena</span>
+            Algo<span className="text-orange-500">Arena</span>
           </span>
         </button>
 
-        {/* Tabs */}
         <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
           {[
             { id: 'view', label: 'Profile', icon: User     },
@@ -58,7 +49,6 @@ function ProfileTopbar({ activeTab, onTabChange }) {
           ))}
         </div>
 
-        {/* Dashboard link */}
         <button
           onClick={() => nav('/dashboard')}
           className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-500
@@ -72,19 +62,17 @@ function ProfileTopbar({ activeTab, onTabChange }) {
   )
 }
 
-// ── ProfilePage ───────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const dispatch   = useAppDispatch()
   const user       = useAppSelector(selectUser)
   const [tab, setTab] = useState('view')
 
-  // Load profile + progress for this user on mount
   useEffect(() => {
-    if (user?.email) {
-      dispatch(loadUserProfile(user.email))
-      dispatch(loadUserProgress(user.email))
+    if (user?.id) {
+      dispatch(loadUserProfile())
+      if (user?.email) dispatch(loadUserProgress(user.email))
     }
-  }, [user?.email, dispatch])
+  }, [user?.id, dispatch])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,7 +80,6 @@ export default function ProfilePage() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
 
-        {/* Page heading */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0  }}
@@ -110,7 +97,6 @@ export default function ProfilePage() {
         </motion.div>
 
         <AnimatePresence mode="wait">
-          {/* ── VIEW TAB ──────────────────────────────────────────────── */}
           {tab === 'view' && (
             <motion.div
               key="view"
@@ -120,20 +106,16 @@ export default function ProfilePage() {
               transition={{ duration: 0.25 }}
               className="grid grid-cols-[260px_1fr] gap-6"
             >
-              {/* Left column */}
               <div className="space-y-5">
                 <ProfileCard onEditClick={() => setTab('edit')} />
               </div>
-
-              {/* Right column */}
               <div className="space-y-5">
-                <ProfileStats email={user?.email} />
+                <ProfileStats />
                 <RecentSolved />
               </div>
             </motion.div>
           )}
 
-          {/* ── EDIT TAB ──────────────────────────────────────────────── */}
           {tab === 'edit' && (
             <motion.div
               key="edit"

@@ -23,13 +23,10 @@ async function Login(req, res) {
     const { email, password } = value;
     const user = await User.findOne({ email });
 
-    console.log(user) // Debugging line to check the user object retrieved from the database
-
     if (!user) {
       return sendErrorResponse(res, {}, "Invalid Credentials", STATUS_CODE.NOT_FOUND);
     }
 
-    // FIX: Users created via Google have no password — block email login for them
     if (!user.password) {
       return sendErrorResponse(
         res,
@@ -53,12 +50,11 @@ async function Login(req, res) {
 
     return sendSuccessResponse(
       res,
-      { token, email, profile_pic: user?.avatar_url },
+      { token, email, name: user.name, id: user._id, profile_pic: user?.avatar_url },
       "Logged In Successfully",
       STATUS_CODE.SUCCESS
     );
   } catch (err) {
-    console.log(err)
     return sendErrorResponse(
       res,
       {},
@@ -95,7 +91,7 @@ async function Signup(req, res) {
       return sendErrorResponse(res, {}, "User Already Exists", STATUS_CODE.CONFLICT);
     }
 
-    const createUser = await authServices.createNewUser({
+    const newUser = await authServices.createNewUser({
       name,
       email,
       password,
@@ -103,14 +99,18 @@ async function Signup(req, res) {
       avatar_url
     });
 
-    if (createUser) {
-      return sendSuccessResponse(
-        res,
-        { data: createUser.data },
-        "User Created Successfully",
-        STATUS_CODE.CREATED
-      );
-    }
+    const token = jwt.sign(
+      { id: newUser._id, email: newUser.email },
+      jwtSecret,
+      { expiresIn: "24h" }
+    );
+
+    return sendSuccessResponse(
+      res,
+      { token, email: newUser.email, name: newUser.name, id: newUser._id, profile_pic: newUser?.avatar_url || null },
+      "User Created Successfully",
+      STATUS_CODE.CREATED
+    );
   } catch (err) {
     return sendErrorResponse(
       res,
@@ -147,8 +147,6 @@ async function generateRedirectUrl(req, res) {
   }
 }
 
-// FIX: This is the callback Google redirects to after user approves.
-// It must redirect the browser back to the frontend with the JWT in the URL.
 async function handleGoogleCallback(req, res) {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -172,7 +170,6 @@ async function handleGoogleCallback(req, res) {
     let user = await User.findOne({ email: payload.email });
 
     if (user) {
-      // Link google_id if not already linked
       if (!user.google_id) {
         user.google_id = payload.sub;
         await user.save();
@@ -184,13 +181,11 @@ async function handleGoogleCallback(req, res) {
         { expiresIn: "24h" }
       );
 
-      // FIX: Redirect to frontend with token — do NOT return JSON
       return res.redirect(
-        `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(user.email)}&profile_pic=${encodeURIComponent(user?.avatar_url || "")}`
+        `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || "")}&id=${user._id}&profile_pic=${encodeURIComponent(user?.avatar_url || "")}`
       );
     }
 
-    // New user via Google
     const newUser = await authServices.createNewUser({
       name: payload.name,
       email: payload.email,
@@ -199,7 +194,6 @@ async function handleGoogleCallback(req, res) {
       avatar_url: payload.picture
     });
 
-    // FIX: Generate token for new Google user (was missing before — returned empty {})
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },
       jwtSecret,
@@ -207,7 +201,7 @@ async function handleGoogleCallback(req, res) {
     );
 
     return res.redirect(
-      `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(newUser.email)}&profile_pic=${encodeURIComponent(newUser?.avatar_url || "")}`
+      `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(newUser.email)}&name=${encodeURIComponent(newUser.name || "")}&id=${newUser._id}&profile_pic=${encodeURIComponent(newUser?.avatar_url || "")}`
     );
 
   } catch (err) {

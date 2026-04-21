@@ -47,12 +47,13 @@ export default function AuthPage() {
   const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '' })
   const [errors,     setErrors]     = useState({})
 
-  // Handle Google OAuth callback — backend redirects here with ?token=...
   useEffect(() => {
     const params     = new URLSearchParams(window.location.search)
     const token      = params.get('token')
     const email      = params.get('email')
     const profilePic = params.get('profile_pic')
+    const name       = params.get('name')
+    const id         = params.get('id')
     const error      = params.get('error')
 
     if (error) {
@@ -64,8 +65,10 @@ export default function AuthPage() {
     if (token && email) {
       dispatch(setGoogleSession({
         token,
-        email: decodeURIComponent(email),
+        email:       decodeURIComponent(email),
         profile_pic: decodeURIComponent(profilePic || ''),
+        name:        decodeURIComponent(name || ''),
+        id:          id || '',
       }))
       toast.success('Signed in with Google!')
       nav('/dashboard')
@@ -107,10 +110,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-white flex">
 
-      {/* ── Left Panel ──────────────────────────────────────────────────── */}
       <div className="hidden lg:flex flex-col justify-between w-[400px] flex-shrink-0 bg-orange-50 border-r border-orange-200 p-10">
-
-        {/* Logo */}
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center">
             <Code2 size={18} className="text-white" />
@@ -118,7 +118,6 @@ export default function AuthPage() {
           <span className="font-black text-xl text-black">AlgoArena</span>
         </div>
 
-        {/* Tagline */}
         <div>
           <h2 className="font-black text-4xl text-black leading-tight mb-4">
             Level up your<br />
@@ -141,12 +140,10 @@ export default function AuthPage() {
         <p className="text-xs font-semibold text-black">© 2024 AlgoArena. All rights reserved.</p>
       </div>
 
-      {/* ── Right Panel ─────────────────────────────────────────────────── */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
           <AnimatePresence mode="wait">
 
-            {/* ── LOGIN ─────────────────────────────────────────────── */}
             {view === 'login' && (
               <motion.div key="login" {...slide} className="space-y-6">
                 <div>
@@ -197,7 +194,6 @@ export default function AuthPage() {
               </motion.div>
             )}
 
-            {/* ── SIGNUP ────────────────────────────────────────────── */}
             {view === 'signup' && (
               <motion.div key="signup" {...slide} className="space-y-6">
                 <div className="flex items-center gap-3">

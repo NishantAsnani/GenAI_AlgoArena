@@ -53,21 +53,32 @@ async function getAllLessons(req, res) {
         const {page, limit} = value;
         const offset = (page - 1) * limit;
 
-        const allLessons = await Lesson.find({
-            skip: offset,
-            limit: limit
-        }).populate('problems');
+        // FIX: chain .skip() and .limit() — not passed as find() filter object
+        const allLessons = await Lesson.find()
+            .skip(offset)
+            .limit(limit)
+            .populate('problems');
 
-        return sendSuccessResponse(res, { lessons: allLessons }, "Lessons retrieved successfully", STATUS_CODE.OK);
+        const total = await Lesson.countDocuments();
+
+        return sendSuccessResponse(res, { lessons: allLessons, total, page, limit }, "Lessons retrieved successfully", STATUS_CODE.OK);
     }catch(err){
         return sendErrorResponse(res, err, "Failed to retrieve lessons");
     }
 }
 
 async function getLessonById(req, res) {
-    const { id } = req.params;
+    const idSchema = Joi.object({
+        id: Joi.string().required()
+    });
     try {
-        const lesson = await Lesson.findByPk(id);
+        const {error, value} = idSchema.validate(req.params);
+        if(error){
+            return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+        }
+
+        // FIX: use findById() (Mongoose) — not findByPk() (Sequelize)
+        const lesson = await Lesson.findById(value.id).populate('problems');
         if (!lesson) {
             return sendErrorResponse(res, {}, "Lesson not found", STATUS_CODE.NOT_FOUND);
         }
@@ -98,9 +109,9 @@ async function updateLesson(req, res) {
             return sendErrorResponse(res, {}, "Lesson not found", STATUS_CODE.NOT_FOUND);
         }
 
-        await Lesson.findByIdAndUpdate(id, value, { new: true });
+        const updated = await Lesson.findByIdAndUpdate(id, value, { new: true });
 
-        return sendSuccessResponse(res, lesson, "Lesson updated successfully", STATUS_CODE.OK);
+        return sendSuccessResponse(res, updated, "Lesson updated successfully", STATUS_CODE.OK);
     } catch (err) {
         console.log(err);
         return sendErrorResponse(res, err, "Failed to update lesson");

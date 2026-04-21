@@ -1,13 +1,11 @@
-// src/components/dashboard/ProblemList.jsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, CheckCircle } from 'lucide-react'
+import { ChevronRight, CheckCircle, BookOpen } from 'lucide-react'
 import { useAppSelector } from '../../hooks/redux'
-import { selectSolved }   from '../../store/slices/progressSlice'
-import { getFolders, getSubfolders, getProblems } from '../../data/problems'
+import { selectSolved } from '../../store/slices/progressSlice'
+import { selectModules } from '../../store/slices/modulesSlice'
 
-// ── Difficulty badge ──────────────────────────────────────────────────────────
 const DIFF = {
   Easy:   { text: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
   Medium: { text: '#d97706', bg: '#fffbeb', border: '#fde68a' },
@@ -26,23 +24,22 @@ function DiffBadge({ d }) {
   )
 }
 
-// ── Single problem row ────────────────────────────────────────────────────────
 function ProblemRow({ problem, isSolved }) {
   const nav = useNavigate()
+  const id  = problem._id || problem.id
   return (
     <button
-      onClick={() => nav(`/problem/${problem.id}`)}
-      className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-100
+      onClick={() => nav(`/problem/${id}`)}
+      className="w-full flex items-center justify-between px-8 py-2.5 border-b border-gray-100
         last:border-0 hover:bg-orange-50/50 transition-colors text-left group"
     >
       <div className="flex items-center gap-3 min-w-0">
-        {/* Solved indicator */}
-        <div className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 transition-all ${
+        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all ${
           isSolved
             ? 'bg-green-50 border-green-300'
             : 'border-gray-300 group-hover:border-orange-300'
         }`}>
-          {isSolved && <CheckCircle size={10} className="text-green-600" />}
+          {isSolved && <CheckCircle size={9} className="text-green-600" />}
         </div>
         <span className={`text-[13px] font-medium truncate transition-colors ${
           isSolved ? 'text-gray-400 line-through' : 'text-black group-hover:text-orange-600'
@@ -58,48 +55,61 @@ function ProblemRow({ problem, isSolved }) {
   )
 }
 
-// ── Subfolder ─────────────────────────────────────────────────────────────────
-function Subfolder({ folder, subfolder, solved }) {
+function LessonFolder({ lesson, solved, search }) {
   const [open, setOpen] = useState(true)
-  const problems        = getProblems(folder, subfolder)
-  const solvedCount     = problems.filter(p => solved.includes(p.id)).length
+  const problems = lesson.problems || []
+
+  const filtered = search
+    ? problems.filter(p => p.title?.toLowerCase().includes(search.toLowerCase()))
+    : problems
+
+  if (search && filtered.length === 0) return null
+
+  const solvedCount = problems.filter(p => solved.includes(p._id || p.id)).length
 
   return (
-    <div>
+    <div className="border-b border-gray-100 last:border-0">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 pl-8 hover:bg-gray-50
-          transition-colors text-left border-b border-gray-100"
+        className="w-full flex items-center gap-2 px-4 py-2.5 bg-gray-50/80
+          hover:bg-gray-100 transition-colors text-left"
       >
+        <BookOpen size={12} className="text-gray-400 flex-shrink-0" />
+        <span className="text-[12px] font-semibold text-gray-600 flex-1 truncate">
+          {lesson.title}
+        </span>
+        <span className="text-[11px] text-gray-400 flex-shrink-0">
+          {solvedCount}/{problems.length} solved
+        </span>
         <ChevronRight
-          size={13}
+          size={12}
           className="text-gray-400 transition-transform flex-shrink-0"
           style={{ transform: open ? 'rotate(90deg)' : 'rotate(0)' }}
         />
-        <span className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">
-          {subfolder}
-        </span>
-        <span className="text-[11px] text-gray-400 ml-1">
-          ({solvedCount}/{problems.length})
-        </span>
       </button>
 
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{   height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ height: 0 }}
+            animate={{ height: 'auto' }}
+            exit={{ height: 0 }}
+            transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
-            {problems.map(p => (
-              <ProblemRow
-                key={p.id}
-                problem={p}
-                isSolved={solved.includes(p.id)}
-              />
-            ))}
+            {filtered.length === 0 ? (
+              <p className="px-8 py-2 text-[12px] text-gray-400 italic">
+                No problems in this lesson.
+              </p>
+            ) : (
+              filtered.map(p => (
+                <ProblemRow
+                  key={p._id || p.id}
+                  problem={p}
+                  isSolved={solved.includes(p._id || p.id)}
+                />
+              ))
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -107,38 +117,32 @@ function Subfolder({ folder, subfolder, solved }) {
   )
 }
 
-// ── Folder ────────────────────────────────────────────────────────────────────
-function Folder({ folder, solved, search }) {
-  const [open, setOpen]  = useState(true)
-  const subfolders       = getSubfolders(folder)
+function ModuleFolder({ module, solved, search }) {
+  const [open, setOpen] = useState(true)
+  const lessons     = module.lessons || []
+  const allProblems = lessons.flatMap(l => l.problems || [])
 
-  // Filter problems by search
-  const allProblems      = subfolders.flatMap(sub => getProblems(folder, sub))
-  const filteredProblems = search
-    ? allProblems.filter(p => p.title.toLowerCase().includes(search.toLowerCase()))
-    : null
+  const solvedCount = allProblems.filter(p => solved.includes(p._id || p.id)).length
+  const total       = allProblems.length
+  const pct         = total ? Math.round((solvedCount / total) * 100) : 0
 
-  const totalInFolder  = allProblems.length
-  const solvedInFolder = allProblems.filter(p => solved.includes(p.id)).length
-  const pct            = totalInFolder ? Math.round((solvedInFolder / totalInFolder) * 100) : 0
-
-  // Hide folder entirely if search has no matches
-  if (search && filteredProblems.length === 0) return null
+  const anyMatch = search
+    ? allProblems.some(p => p.title?.toLowerCase().includes(search.toLowerCase()))
+    : true
+  if (search && !anyMatch) return null
 
   return (
     <div className="rounded-xl border border-gray-200 overflow-hidden mb-3">
-      {/* Folder header */}
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-3.5 bg-white
           hover:bg-gray-50 transition-colors text-left"
       >
         <div className="flex items-center gap-3">
-          <span className="text-[14px] font-semibold text-black">{folder}</span>
-          <span className="text-[12px] text-gray-400">{solvedInFolder}/{totalInFolder} solved</span>
+          <span className="text-[14px] font-semibold text-black">{module.title}</span>
+          <span className="text-[12px] text-gray-400">{solvedCount}/{total} solved</span>
         </div>
         <div className="flex items-center gap-3">
-          {/* Mini progress */}
           <div className="w-16 h-1.5 rounded-full bg-gray-100 overflow-hidden hidden sm:block">
             <div
               className="h-full rounded-full bg-orange-400 transition-all"
@@ -153,28 +157,26 @@ function Folder({ folder, solved, search }) {
         </div>
       </button>
 
-      {/* Content */}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
             initial={{ height: 0 }}
             animate={{ height: 'auto' }}
-            exit={{   height: 0 }}
+            exit={{ height: 0 }}
             transition={{ duration: 0.2 }}
             className="overflow-hidden border-t border-gray-100"
           >
-            {/* Search results — flat list */}
-            {search ? (
-              filteredProblems.map(p => (
-                <ProblemRow key={p.id} problem={p} isSolved={solved.includes(p.id)} />
-              ))
+            {lessons.length === 0 ? (
+              <p className="px-4 py-3 text-[13px] text-gray-400 italic">
+                No lessons in this module yet.
+              </p>
             ) : (
-              subfolders.map(sub => (
-                <Subfolder
-                  key={sub}
-                  folder={folder}
-                  subfolder={sub}
+              lessons.map(lesson => (
+                <LessonFolder
+                  key={lesson._id || lesson.id}
+                  lesson={lesson}
                   solved={solved}
+                  search={search}
                 />
               ))
             )}
@@ -185,17 +187,24 @@ function Folder({ folder, solved, search }) {
   )
 }
 
-// ── ProblemList ───────────────────────────────────────────────────────────────
 export default function ProblemList({ search }) {
   const solved  = useAppSelector(selectSolved)
-  const folders = getFolders()
+  const modules = useAppSelector(selectModules)
+
+  if (modules.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16 text-gray-400 text-[14px]">
+        No modules found. Add some modules to get started.
+      </div>
+    )
+  }
 
   return (
     <div>
-      {folders.map(folder => (
-        <Folder
-          key={folder}
-          folder={folder}
+      {modules.map(mod => (
+        <ModuleFolder
+          key={mod._id || mod.id}
+          module={mod}
           solved={solved}
           search={search}
         />

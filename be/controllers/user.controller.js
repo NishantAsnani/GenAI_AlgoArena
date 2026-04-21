@@ -1,8 +1,8 @@
-const  User  = require("../models/users");
+const User = require("../models/users");
 const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 const { STATUS_CODE } = require("../utils/constants");
 const userServices = require("../services/user.service");
-const Joi=require('joi');
+const Joi = require('joi');
 const UserProfile = require("../models/UserProfile");
 
 async function getAllUsers(req, res) {
@@ -12,7 +12,6 @@ async function getAllUsers(req, res) {
     name: Joi.string().allow('')
   });
   try {
-
     const {error, value} = querySchema.validate(req.query);
 
     if(error){
@@ -21,14 +20,12 @@ async function getAllUsers(req, res) {
 
     const {page=1, limit=10, name: nameSearch} = value;
 
-
     const allUsers = await userServices.getAllUsers({
       page,
       limit,
       nameSearch
     });
 
-    
     if(allUsers) {
       return sendSuccessResponse(
       res,
@@ -71,20 +68,63 @@ async function getUserById(req, res) {
       );
     }
 
-    
-      return sendSuccessResponse(
-        res,
-        fetchUser,
-        "User Retrieved Successfully",
-        STATUS_CODE.SUCCESS
-      );
-    
+    return sendSuccessResponse(
+      res,
+      fetchUser,
+      "User Retrieved Successfully",
+      STATUS_CODE.SUCCESS
+    );
     
   } catch (err) {
     return sendErrorResponse(
       res,
       {},
       `Error Retrieving User: ${err.message}`,
+      STATUS_CODE.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+async function getUserProfile(req, res) {
+  const idSchema = Joi.object({
+    id: Joi.string().hex().required()
+  });
+  try {
+    const {error, value} = idSchema.validate(req.params);
+
+    if(error){
+      return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+    }
+
+    const userId = value.id;
+
+    if(userId !== req.user.id.toString()){
+      return sendErrorResponse(
+        res,
+        {},
+        "Unauthorized: You can only view your own profile",
+        STATUS_CODE.UNAUTHORIZED
+      );
+    }
+
+    const user = await userServices.fetchUserById(userId);
+    if(!user){
+      return sendErrorResponse(res, {}, "User Not Found", STATUS_CODE.NOT_FOUND);
+    }
+
+    const profile = await UserProfile.findOne({ user_id: userId }) || {};
+
+    return sendSuccessResponse(
+      res,
+      { user, profile },
+      "Profile Retrieved Successfully",
+      STATUS_CODE.OK
+    );
+  } catch (err) {
+    return sendErrorResponse(
+      res,
+      {},
+      `Error Retrieving Profile: ${err.message}`,
       STATUS_CODE.INTERNAL_SERVER_ERROR
     );
   }
@@ -168,9 +208,6 @@ async function editUser(req, res) {
       );
     }
 
-
-    
-
     const updatedUser = await userServices.updateUser(userId,existingUser,{ name, email, password });
 
     if (updatedUser) {
@@ -251,17 +288,15 @@ async function editUserProfile(req, res) {
     
       return sendSuccessResponse(res, userProfile, "User profile updated successfully", STATUS_CODE.OK);
   }catch(err){
-    console.log(err);
       return sendErrorResponse(res, err, "Failed to update user profile");
   }
-
-  
 }
 
 
 module.exports={
     getAllUsers,
     getUserById,
+    getUserProfile,
     deleteUser,
     editUser,
     editUserProfile

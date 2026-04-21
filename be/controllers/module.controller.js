@@ -15,8 +15,6 @@ async function getAllModules(req, res) {
             return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
         }
 
-        
-
         const {page=1, limit=10} = value;
         const offset = (page - 1) * limit;
         const modules = await Module.find().skip(offset).limit(limit).populate({
@@ -24,9 +22,8 @@ async function getAllModules(req, res) {
             populate: {
                 path: 'problems'
             }
-        })  ;
+        });
 
-    
         return sendSuccessResponse(res, modules, "Modules fetched successfully");
     }catch(err){
         console.log(err)
@@ -46,7 +43,12 @@ async function getModuleById(req, res) {
         }
 
         const {id} = value;
-        const requiredModule = await Module.findByPk(id);
+        const requiredModule = await Module.findById(id).populate({
+            path: 'lessons',
+            populate: {
+                path: 'problems'
+            }
+        });
 
         if(!requiredModule){
             return sendErrorResponse(res, null, "Module not found", STATUS_CODE.NOT_FOUND);
@@ -66,7 +68,6 @@ async function createModule(req, res) {
         tags: Joi.array().items(Joi.string()),
         lessons: Joi.array().items(Joi.string().hex())
     });
-
 
     try{
         const {error, value} = moduleSchema.validate(req.body);
@@ -135,4 +136,3 @@ getModuleById,
 createModule,
 editModule
 }
-

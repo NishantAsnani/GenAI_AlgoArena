@@ -1,10 +1,3 @@
-// src/pages/DashboardPage.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Module: dashboard
-// Protected — accessible only with valid token
-// User-specific — progress keyed by user email in localStorage
-// BACKEND: mark problem as solved via API on submit
-// ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect } from 'react'
 import { motion }              from 'framer-motion'
 import { Trophy, BookOpen, BarChart2, Search } from 'lucide-react'
@@ -14,11 +7,11 @@ import {
   selectSolvedCount, selectTotalCount, selectPercentage,
   loadUserProgress,
 } from '../store/slices/progressSlice'
+import { fetchModules, selectModulesLoading } from '../store/slices/modulesSlice'
 import Topbar      from '../components/dashboard/Topbar'
 import ProblemList from '../components/dashboard/ProblemList'
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, sub, color }) {
+function StatCard({ icon: Icon, label, value, color }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -40,22 +33,23 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
   )
 }
 
-// ── DashboardPage ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const dispatch     = useAppDispatch()
-  const user         = useAppSelector(selectUser)
-  const solvedCount  = useAppSelector(selectSolvedCount)
-  const totalCount   = selectTotalCount()
-  const percentage   = useAppSelector(selectPercentage)
+  const dispatch        = useAppDispatch()
+  const user            = useAppSelector(selectUser)
+  const solvedCount     = useAppSelector(selectSolvedCount)
+  const totalCount      = useAppSelector(selectTotalCount)
+  const percentage      = useAppSelector(selectPercentage)
+  const problemsLoading = useAppSelector(selectModulesLoading)
   const [search, setSearch] = useState('')
 
-  // Load this user's solved problems on mount
-  // Each user has their own progress keyed by email in localStorage
+  useEffect(() => {
+    dispatch(fetchModules())
+  }, [dispatch])
+
   useEffect(() => {
     if (user?.email) dispatch(loadUserProgress(user.email))
   }, [user?.email, dispatch])
 
-  // Greeting
   const displayName = user?.name || user?.email?.split('@')[0] || 'there'
   const greeting    = (() => {
     const h = new Date().getHours()
@@ -66,7 +60,7 @@ export default function DashboardPage() {
 
   const motivationText = solvedCount === 0
     ? 'Ready to start? Pick your first problem below.'
-    : solvedCount === totalCount
+    : solvedCount === totalCount && totalCount > 0
     ? '🎉 You solved everything! Incredible work.'
     : `You've solved ${solvedCount} problem${solvedCount > 1 ? 's' : ''}. Keep the streak going!`
 
@@ -80,7 +74,6 @@ export default function DashboardPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
 
-        {/* ── Greeting ─────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0  }}
@@ -93,39 +86,19 @@ export default function DashboardPage() {
           <p className="text-[14px] text-gray-500">{motivationText}</p>
         </motion.div>
 
-        {/* ── Stats row ────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <StatCard
-            icon={Trophy}
-            label="Solved"
-            value={solvedCount}
-            color="#f97316"
-          />
-          <StatCard
-            icon={BookOpen}
-            label="Total"
-            value={totalCount}
-            color="#6366f1"
-          />
-          <StatCard
-            icon={BarChart2}
-            label="Progress"
-            value={`${percentage}%`}
-            color="#16a34a"
-          />
+          <StatCard icon={Trophy}    label="Solved"   value={solvedCount}       color="#f97316" />
+          <StatCard icon={BookOpen}  label="Total"    value={totalCount}        color="#6366f1" />
+          <StatCard icon={BarChart2} label="Progress" value={`${percentage}%`}  color="#16a34a" />
         </div>
 
-        {/* ── Search ───────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0  }}
           transition={{ duration: 0.4, delay: 0.1 }}
           className="relative mb-6"
         >
-          <Search
-            size={15}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-          />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search problems..."
@@ -146,7 +119,6 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        {/* ── Problem list ──────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0  }}
@@ -157,7 +129,13 @@ export default function DashboardPage() {
               Showing results for "<span className="text-black font-medium">{search}</span>"
             </p>
           )}
-          <ProblemList search={search} />
+          {problemsLoading ? (
+            <div className="flex items-center justify-center py-16 text-gray-400 text-[14px]">
+              Loading problems...
+            </div>
+          ) : (
+            <ProblemList search={search} />
+          )}
         </motion.div>
 
       </main>

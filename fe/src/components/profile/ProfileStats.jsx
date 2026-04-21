@@ -1,25 +1,23 @@
-// src/components/profile/ProfileStats.jsx
-// DSA progress donut + stats card + activity heatmap
 import { useMemo } from 'react'
 import { useAppSelector } from '../../hooks/redux'
 import { selectSolved, selectSolvedCount, selectPercentage } from '../../store/slices/progressSlice'
-import { PROBLEMS } from '../../data/problems'
+import { selectProblems, selectProblemsCount } from '../../store/slices/problemsSlice'
+import { selectUser } from '../../store/slices/authSlice'
 
-// ── Donut Chart ────────────────────────────────────────────────────────────────
 function DonutChart({ easy, medium, hard, total, solved }) {
-  const r   = 52
-  const cx  = 68
-  const cy  = 68
+  const r    = 52
+  const cx   = 68
+  const cy   = 68
   const circ = 2 * Math.PI * r
 
-  const easyPct   = total ? easy   / total : 0
-  const medPct    = total ? medium / total : 0
-  const hardPct   = total ? hard   / total : 0
+  const easyPct = total ? easy   / total : 0
+  const medPct  = total ? medium / total : 0
+  const hardPct = total ? hard   / total : 0
 
   const segments = [
-    { pct: easyPct,   color: '#16a34a', offset: 0 },
-    { pct: medPct,    color: '#d97706', offset: easyPct },
-    { pct: hardPct,   color: '#dc2626', offset: easyPct + medPct },
+    { pct: easyPct, color: '#16a34a', offset: 0 },
+    { pct: medPct,  color: '#d97706', offset: easyPct },
+    { pct: hardPct, color: '#dc2626', offset: easyPct + medPct },
   ]
 
   return (
@@ -39,17 +37,15 @@ function DonutChart({ easy, medium, hard, total, solved }) {
           />
         ))}
       </svg>
-      {/* Center text */}
       <div className="mt-[-88px] mb-[52px] text-center pointer-events-none">
         <div className="text-2xl font-bold text-black leading-none">{solved}</div>
         <div className="text-[11px] text-gray-400 mt-0.5">/ {total}</div>
       </div>
-      {/* Legend */}
       <div className="flex flex-col gap-1.5 mt-1 w-full">
         {[
-          { label: 'Easy',   count: easy,   total: total, color: '#16a34a', bg: '#f0fdf4' },
-          { label: 'Medium', count: medium, total: total, color: '#d97706', bg: '#fffbeb' },
-          { label: 'Hard',   count: hard,   total: total, color: '#dc2626', bg: '#fef2f2' },
+          { label: 'Easy',   count: easy,   color: '#16a34a' },
+          { label: 'Medium', count: medium, color: '#d97706' },
+          { label: 'Hard',   count: hard,   color: '#dc2626' },
         ].map(d => (
           <div key={d.label} className="flex items-center justify-between text-[12px]">
             <div className="flex items-center gap-1.5">
@@ -64,21 +60,20 @@ function DonutChart({ easy, medium, hard, total, solved }) {
   )
 }
 
-// ── Activity Heatmap ───────────────────────────────────────────────────────────
-function Heatmap({ email }) {
-  const heatKey  = `aa_heatmap_${email}`
+function Heatmap() {
+  const user    = useAppSelector(selectUser)
+  const heatKey = `aa_heatmap_${user?.email}`
   const heatData = useMemo(() => {
     try { return JSON.parse(localStorage.getItem(heatKey)) || {} } catch { return {} }
   }, [heatKey])
 
-  // Build last 28 days grid (4 weeks x 7 days)
   const days = useMemo(() => {
     const arr = []
     for (let i = 27; i >= 0; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
       const key = d.toISOString().slice(0, 10)
-      arr.push({ key, val: heatData[key] || 0, day: d.getDate(), month: d.getMonth() })
+      arr.push({ key, val: heatData[key] || 0 })
     }
     return arr
   }, [heatData])
@@ -92,7 +87,6 @@ function Heatmap({ email }) {
     return '#ea580c'
   }
 
-  // Group into weeks
   const weeks = []
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7))
 
@@ -129,20 +123,19 @@ function Heatmap({ email }) {
   )
 }
 
-// ── ProfileStats (main export) ─────────────────────────────────────────────────
-export default function ProfileStats({ email }) {
-  const solved     = useAppSelector(selectSolved)
+export default function ProfileStats() {
+  const solved      = useAppSelector(selectSolved)
   const solvedCount = useAppSelector(selectSolvedCount)
   const percentage  = useAppSelector(selectPercentage)
-  const total       = PROBLEMS.length
+  const problems    = useAppSelector(selectProblems)
+  const total       = useAppSelector(selectProblemsCount)
 
-  const easy   = PROBLEMS.filter(p => p.difficulty === 'Easy'   && solved.includes(p.id)).length
-  const medium = PROBLEMS.filter(p => p.difficulty === 'Medium' && solved.includes(p.id)).length
-  const hard   = PROBLEMS.filter(p => p.difficulty === 'Hard'   && solved.includes(p.id)).length
+  const easy   = problems.filter(p => p.difficulty === 'Easy'   && solved.includes(p._id || p.id)).length
+  const medium = problems.filter(p => p.difficulty === 'Medium' && solved.includes(p._id || p.id)).length
+  const hard   = problems.filter(p => p.difficulty === 'Hard'   && solved.includes(p._id || p.id)).length
 
   return (
     <div className="space-y-5">
-      {/* DSA Progress card */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="text-[13px] font-bold text-black uppercase tracking-wide mb-4">
           DSA Progress
@@ -151,7 +144,6 @@ export default function ProfileStats({ email }) {
           easy={easy} medium={medium} hard={hard}
           total={total} solved={solvedCount}
         />
-        {/* Overall bar */}
         <div className="mt-4 pt-4 border-t border-gray-100">
           <div className="flex justify-between text-[12px] mb-1.5">
             <span className="text-gray-500">Overall</span>
@@ -166,9 +158,8 @@ export default function ProfileStats({ email }) {
         </div>
       </div>
 
-      {/* Heatmap card */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <Heatmap email={email} />
+        <Heatmap />
       </div>
     </div>
   )

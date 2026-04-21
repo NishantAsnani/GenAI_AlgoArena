@@ -1,17 +1,16 @@
-// src/components/profile/ProfileCard.jsx
-// Left sidebar card — avatar, name, email, bio links
 import { ExternalLink, MapPin, GraduationCap, Github, Linkedin, Twitter, FileText } from 'lucide-react'
 import { useAppSelector } from '../../hooks/redux'
 import { selectUser }     from '../../store/slices/authSlice'
 import { selectProfile }  from '../../store/slices/profileSlice'
 import { selectSolvedCount, selectPercentage } from '../../store/slices/progressSlice'
-import { PROBLEMS } from '../../data/problems'
+import { selectProblemsCount } from '../../store/slices/problemsSlice'
 
 export default function ProfileCard({ onEditClick }) {
-  const user        = useAppSelector(selectUser)
-  const profile     = useAppSelector(selectProfile)
-  const solvedCount = useAppSelector(selectSolvedCount)
-  const percentage  = useAppSelector(selectPercentage)
+  const user         = useAppSelector(selectUser)
+  const profile      = useAppSelector(selectProfile)
+  const solvedCount  = useAppSelector(selectSolvedCount)
+  const percentage   = useAppSelector(selectPercentage)
+  const totalCount   = useAppSelector(selectProblemsCount)
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'User'
   const initial     = displayName[0]?.toUpperCase()
@@ -24,15 +23,14 @@ export default function ProfileCard({ onEditClick }) {
   ].filter(s => s.url)
 
   const codingLinks = [
-    { label: 'LeetCode',    url: profile.leetcode   },
-    { label: 'HackerRank',  url: profile.hackerrank },
-    { label: 'Codeforces',  url: profile.codeforces },
-    { label: 'GeeksForGeeks', url: profile.gfg      },
+    { label: 'LeetCode',      url: profile.leetcode   },
+    { label: 'HackerRank',    url: profile.hackerrank },
+    { label: 'Codeforces',    url: profile.codeforces },
+    { label: 'GeeksForGeeks', url: profile.gfg        },
   ].filter(c => c.url)
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-      {/* Avatar + name */}
       <div className="flex flex-col items-center text-center gap-2 pb-4 border-b border-gray-100">
         {user?.profile_pic ? (
           <img
@@ -51,7 +49,6 @@ export default function ProfileCard({ onEditClick }) {
           <p className="text-[12px] text-gray-400 mt-0.5">{user?.email}</p>
         </div>
 
-        {/* Quick stats */}
         <div className="flex gap-4 mt-1">
           <div className="text-center">
             <div className="text-[15px] font-bold text-black">{solvedCount}</div>
@@ -59,7 +56,7 @@ export default function ProfileCard({ onEditClick }) {
           </div>
           <div className="w-px bg-gray-100" />
           <div className="text-center">
-            <div className="text-[15px] font-bold text-black">{PROBLEMS.length}</div>
+            <div className="text-[15px] font-bold text-black">{totalCount}</div>
             <div className="text-[10px] text-gray-400">Total</div>
           </div>
           <div className="w-px bg-gray-100" />
@@ -78,7 +75,6 @@ export default function ProfileCard({ onEditClick }) {
         </button>
       </div>
 
-      {/* Info */}
       {(profile.location || profile.education) && (
         <div className="space-y-2 pb-4 border-b border-gray-100">
           {profile.location && (
@@ -96,7 +92,6 @@ export default function ProfileCard({ onEditClick }) {
         </div>
       )}
 
-      {/* Social links */}
       {socialLinks.length > 0 && (
         <div className="space-y-2 pb-4 border-b border-gray-100">
           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Social</p>
@@ -116,7 +111,6 @@ export default function ProfileCard({ onEditClick }) {
         </div>
       )}
 
-      {/* Coding profiles */}
       {codingLinks.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Coding</p>
@@ -136,7 +130,6 @@ export default function ProfileCard({ onEditClick }) {
         </div>
       )}
 
-      {/* Prompt to fill profile */}
       {socialLinks.length === 0 && codingLinks.length === 0 && !profile.location && (
         <button
           onClick={onEditClick}
