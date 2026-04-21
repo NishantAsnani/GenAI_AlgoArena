@@ -56,7 +56,7 @@ function ProblemRow({ problem, isSolved }) {
 }
 
 function LessonFolder({ lesson, solved, search }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const problems = lesson.problems || []
 
   const filtered = search
@@ -118,7 +118,7 @@ function LessonFolder({ lesson, solved, search }) {
 }
 
 function ModuleFolder({ module, solved, search }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const lessons     = module.lessons || []
   const allProblems = lessons.flatMap(l => l.problems || [])
 
