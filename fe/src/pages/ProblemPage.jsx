@@ -34,7 +34,8 @@ import { getStarterCode, generateStarterCode } from '../utils/starterCode'
 import SimpleEditor                 from '../components/editor/SimpleEditor'
 import ProblemDescription           from '../components/editor/ProblemDescription'
 import TestCasePanel                from '../components/editor/TestCasePanel'
-import toast                        from 'react-hot-toast'
+import toast from 'react-hot-toast'
+import AIChatBot from '../components/ai/AIChatBot'
 
 // ── Normalize a backend (MongoDB) problem → frontend shape ────────────────────
 function normalizeProblem(p) {
@@ -688,6 +689,13 @@ export default function ProblemPage() {
           />
         </div>
       </div>
+
+      {/* ── AI Chatbot ─────────────────────────────────────────────────── */}
+      <AIChatBot
+        problem={problem}
+        code={code}
+        language={language}
+      />
     </div>
   )
 }
