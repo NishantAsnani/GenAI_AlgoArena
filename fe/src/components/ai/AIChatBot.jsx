@@ -1,11 +1,8 @@
 // src/components/ai/AIChatBot.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-// Floating AI Chatbot — context-aware assistant for the problem page
-//
-// BACKEND: Wire sendMessage() to your AI endpoint when ready
-//   Endpoint: POST /api/ai/chat
-//   Body:     { problem_id, messages: [{role, content}], code, language }
-//   Response: { reply: string }
+// Floating AI Chatbot — connected to POST /api/ai/chat
+//   Body:     { prompt: string }
+//   Response: { success, message, data: string }
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -13,17 +10,11 @@ import {
   Sparkles, X, Send, Loader2, Bot, User,
   Minimize2, Maximize2, RotateCcw,
 } from 'lucide-react'
-
-// ── Quick prompt chips shown on first open ────────────────────────────────────
-const QUICK_PROMPTS = [
-  '💡 Give me a hint',
-  '🐛 Debug my code',
-  '📚 Explain the approach',
-  '⚡ What is the time complexity?',
-]
+import { aiApi } from '../../api/auth' // adjust this import path to match your project
 
 // ── Minimal markdown: bold + inline code ─────────────────────────────────────
 function renderMsg(text) {
+  if (!text || typeof text !== 'string') return null
   const lines = text.split('\n')
   return lines.map((line, li) => {
     if (line === '') return <div key={li} className="h-2" />
@@ -108,17 +99,17 @@ export default function AIChatBot({ problem, code, language }) {
   const [messages,  setMessages]  = useState([
     {
       role:    'assistant',
-      content: `Hi! I'm your AI coding assistant 🤖\n\nI can see you're working on **${problem?.title || 'this problem'}**. Ask me anything:\n- 💡 Hints without spoilers\n- 🐛 Debug help\n- 📚 Concept explanations\n- ⚡ Complexity analysis`,
+      content: `Hi! I'm your DSA mentor 🤖\n\nI can see you're working on **${problem?.title || 'this problem'}**. Ask me anything:\n- 💡 Hints without spoilers\n- 🐛 Debug help\n- 📚 Concept explanations\n- ⚡ Complexity analysis`,
     }
   ])
-  const bottomRef  = useRef(null)
-  const inputRef   = useRef(null)
+  const bottomRef = useRef(null)
+  const inputRef  = useRef(null)
 
   // Reset messages when problem changes
   useEffect(() => {
     setMessages([{
       role:    'assistant',
-      content: `Hi! I'm your AI coding assistant 🤖\n\nI can see you're working on **${problem?.title || 'this problem'}**. Ask me anything:\n- 💡 Hints without spoilers\n- 🐛 Debug help\n- 📚 Concept explanations\n- ⚡ Complexity analysis`,
+      content: `Hi! I'm your DSA mentor 🤖 \n I'm here to help you out. Ask me anything.`,
     }])
   }, [problem?.id])
 
@@ -136,36 +127,27 @@ export default function AIChatBot({ problem, code, language }) {
     setInput('')
 
     const userMsg = { role: 'user', content }
-    const updated = [...messages, userMsg]
-    setMessages(updated)
+    setMessages(prev => [...prev, userMsg])
     setLoading(true)
 
     try {
-      // BACKEND: Uncomment when AI endpoint is ready
-      // ───────────────────────────────────────────────────────────────────────
-      // const { data } = await api.post('/ai/chat', {
-      //   problem_id: problem?.id,
-      //   language,
-      //   code,
-      //   messages: updated.map(m => ({ role: m.role, content: m.content })),
-      // })
-      // setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
-      // ───────────────────────────────────────────────────────────────────────
+      const { data } = await aiApi.chat(content)
 
-      // ── MOCK ──
-      await new Promise(r => setTimeout(r, 1200))
-      const mockReply = getMockReply(content, problem, code)
-      setMessages(prev => [...prev, { role: 'assistant', content: mockReply }])
-
-    } catch {
       setMessages(prev => [...prev, {
         role:    'assistant',
-        content: '⚠️ Connection error. Please try again.',
+        content: typeof data?.data === 'string' ? data.data : 'Sorry, I could not generate a response.',
+      }])
+
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || 'Connection error. Please try again.'
+      setMessages(prev => [...prev, {
+        role:    'assistant',
+        content: `⚠️ ${errMsg}`,
       }])
     } finally {
       setLoading(false)
     }
-  }, [input, messages, loading, problem, code, language])
+  }, [input, loading])
 
   const handleKey = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
@@ -177,8 +159,6 @@ export default function AIChatBot({ problem, code, language }) {
       content: `Chat cleared. Ask me anything about **${problem?.title || 'this problem'}**!`,
     }])
   }
-
-  const showQuickPrompts = messages.length <= 1
 
   return (
     <>
@@ -228,7 +208,7 @@ export default function AIChatBot({ problem, code, language }) {
                 <Sparkles size={13} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-black leading-tight">AI Assistant</p>
+                <p className="text-[13px] font-bold text-black leading-tight">DSA Mentor</p>
                 <p className="text-[10px] text-gray-400 truncate">
                   {problem?.title || 'Code help'}
                 </p>
@@ -265,24 +245,6 @@ export default function AIChatBot({ problem, code, language }) {
                   <div ref={bottomRef} />
                 </div>
 
-                {/* Quick prompts */}
-                {showQuickPrompts && (
-                  <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-                    {QUICK_PROMPTS.map(q => (
-                      <button
-                        key={q}
-                        onClick={() => sendMessage(q)}
-                        className="px-2.5 py-1 rounded-lg bg-gray-100 border border-gray-200
-                          text-[11px] font-medium text-gray-600
-                          hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700
-                          transition-all"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
                 {/* Input row */}
                 <div className="flex items-end gap-2 px-3 pb-3 pt-2
                   border-t border-gray-100 flex-shrink-0">
@@ -318,18 +280,4 @@ export default function AIChatBot({ problem, code, language }) {
       </AnimatePresence>
     </>
   )
-}
-
-// ── Mock replies (remove when backend is connected) ───────────────────────────
-function getMockReply(input, problem, code) {
-  const q = input.toLowerCase()
-  if (q.includes('hint') || q.includes('help'))
-    return `Here's a hint for **${problem?.title}**:\n\nThink about the data structure that gives you O(1) lookups. What if you stored elements you've already seen?\n\nTry to avoid the O(n²) brute force approach.`
-  if (q.includes('debug') || q.includes('error') || q.includes('wrong'))
-    return `Looking at your code, a few things to check:\n\n- Make sure your loop boundaries are correct (off-by-one errors are common here)\n- Check your return statement — are you returning the right type?\n- Trace through Example 1 manually step by step`
-  if (q.includes('complexity') || q.includes('time') || q.includes('space'))
-    return `**Time Complexity:** O(n) — you iterate through the array once.\n\n**Space Complexity:** O(n) in the worst case if you use a hash map to store seen elements.\n\nCan you think of a way to reduce space complexity?`
-  if (q.includes('approach') || q.includes('explain') || q.includes('how'))
-    return `**Approach for ${problem?.title || 'this problem'}:**\n\n1. Understand the problem constraints\n2. Think about edge cases (empty input, single element)\n3. Start with a brute force solution, then optimize\n4. Use appropriate data structures for efficiency`
-  return `That's a great question about **${problem?.title}**!\n\nHere are some things to consider:\n\n- Break the problem into smaller sub-problems\n- Think about what information you need to track\n- Consider the time/space tradeoffs\n\nWhat specific part are you stuck on?`
 }
