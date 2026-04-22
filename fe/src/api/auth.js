@@ -33,4 +33,8 @@ export const moduleApi = {
   getById: (id)                     => api.get(`/module/${id}`),
 }
 
+export const aiApi = {
+  chat: (prompt) => api.post('/ai/chat', { prompt }),
+}
+
 export default api
