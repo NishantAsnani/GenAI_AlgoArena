@@ -8,6 +8,15 @@ VALIDATION_ERROR:400,
 CREATED:201
 }
 
+const LANGUAGE_MAP={
+    1:"Python",
+    2:"Java",
+    52:"C++",
+    4:"JavaScript",
+    5:"Go"
+}
+
 module.exports={
-    STATUS_CODE
+    STATUS_CODE,
+    LANGUAGE_MAP
 }

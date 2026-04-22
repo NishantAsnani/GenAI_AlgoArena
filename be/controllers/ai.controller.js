@@ -1,10 +1,11 @@
 const Joi=require('joi');
 const axios=require('axios');
 const { sendErrorResponse, sendSuccessResponse } = require('../utils/response');
-const { STATUS_CODE } = require('../utils/constants');
+const { STATUS_CODE,LANGUAGE_MAP } = require('../utils/constants');
 const Groq= require('groq-sdk');
-
-
+const aiSession=require('../models/AISession');
+const submission=require('../models/submission');
+const { extractJSON } = require('../utils/helper');
 
 const DSA_SYSTEM_PROMPT = `You are a friendly and knowledgeable DSA (Data Structures & Algorithms) mentor.
 
@@ -47,6 +48,54 @@ FLEXIBILITY:
 TONE:
 - Friendly, supportive, and slightly conversational.
 - Avoid sounding robotic or overly strict.`;
+
+
+const CODE_ANALYSIS_PROMPT = `You are an expert code analyst specializing in algorithmic complexity and code quality.
+
+TASK:
+Analyze the provided code and return a structured JSON response ONLY. No extra text, no markdown, no explanation outside the JSON.
+
+ANALYSIS RULES:
+- Derive Big-O time complexity by identifying loops, recursion depth, and nested operations
+- Derive Big-O space complexity by identifying auxiliary data structures, call stack usage, and allocations
+- Be precise: distinguish between best, average, and worst case where they differ significantly
+- Code suggestions must be actionable, specific to the given code — not generic advice
+- If the code has no improvable issues, say so honestly in suggestions
+
+RESPONSE FORMAT — Return ONLY this JSON structure, nothing else:
+{
+  "time_complexity": {
+    "value": "O(...)",
+    "best_case": "O(...)",
+    "average_case": "O(...)",
+    "worst_case": "O(...)",
+    "description": "Plain English explanation of why this complexity arises from the code structure"
+  },
+  "space_complexity": {
+    "value": "O(...)",
+    "includes_call_stack": true or false,
+    "description": "Plain English explanation of memory usage, auxiliary structures, and recursion stack if any"
+  },
+  "code_suggestions": 
+    {
+      "issue": "Short title of the problem",
+      "explanation": "Why this is a concern or inefficiency",
+      "suggestion": "Concrete fix or alternative approach",
+      "impact": "time" or "space" or "readability" or "both"
+    }
+,
+  "overall_rating": {
+    "score": 1–10,
+    "summary": "One-line verdict on the code's efficiency and quality"
+  }
+}
+
+STRICT RULES:
+- Output ONLY valid JSON — no prose before or after
+- Do NOT add markdown code fences around the JSON
+- Do NOT invent complexities — if ambiguous, state it clearly in the description field
+- Language of the code does not matter — analyze logic, not syntax`
+
 
 const groq = new Groq({
   apiKey:process.env.GROK_API_KEY,
@@ -109,7 +158,126 @@ async function chatResponse(req, res) {
   }
 }
 
+async function analyzeCode(req, res) {
+  const codeSchema = Joi.object({
+    submission_id: Joi.string().hex().required(),
+  });
+
+  try {
+
+    const { error, value } = codeSchema.validate(req.body);
+    if (error) {
+      return sendErrorResponse(
+        res,
+        error.details,
+        "Validation error",
+        STATUS_CODE.VALIDATION_ERROR
+      );
+    }
+
+    const { submission_id } = value;
+
+
+    const existingAnalysis = await aiSession.findOne({ submission_id });
+
+    if (existingAnalysis) {
+      return sendSuccessResponse(res, existingAnalysis, "Existing analysis retrieved", STATUS_CODE.SUCCESS);
+    }
+
+
+    const required_submission = await submission.findById(submission_id);
+
+    if (!required_submission) {
+      return sendErrorResponse(
+        res,
+        {},
+        "Submission not found",
+        STATUS_CODE.NOT_FOUND
+      );
+    }
+
+    const { code, language_id } = required_submission;
+
+    if (!code || !language_id) {
+      return sendErrorResponse(
+        res,
+        {},
+        "Submission is missing code or language fields",
+        STATUS_CODE.VALIDATION_ERROR
+      );
+    }
+
+    const language = LANGUAGE_MAP[language_id];
+
+
+
+    const grokResponse = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+          { role: "system", content: CODE_ANALYSIS_PROMPT },
+          {
+            role: "user",
+            content: `Language: ${language}\n\nCode to analyze:\n${code}`,
+          },
+        ],
+      max_tokens: 500,
+    });
+
+    
+    
+
+    const rawReply = grokResponse.choices[0].message.content;
+
+  
+
+    if (!rawReply) {
+      return sendErrorResponse(
+        res,
+        {},
+        "No response from Grok API",
+        STATUS_CODE.INTERNAL_SERVER_ERROR
+      );
+    }
+
+
+    let analysisResult;
+    try {
+      analysisResult = extractJSON(rawReply);
+    } catch (parseErr) {
+      console.log("Error parsing Grok response as JSON:", parseErr);
+      return sendErrorResponse(
+        res,
+        { raw: rawReply },
+        "Grok returned malformed JSON. Try again.",
+        STATUS_CODE.INTERNAL_SERVER_ERROR
+      );
+    }
+    
+
+
+    const aiSessionData = await aiSession.create({
+      submission_id,
+      user_id:req.user.id,
+      time_complexity: analysisResult.time_complexity,
+      space_complexity: analysisResult.space_complexity,
+      code_suggestions: analysisResult.code_suggestions,
+      overall_rating: analysisResult.overall_rating
+    });
+
+    return sendSuccessResponse(res, aiSessionData, "Code analyzed successfully", STATUS_CODE.SUCCESS);
+
+  } catch (err) {
+    console.log(err);
+    return sendErrorResponse(
+      res,
+      {},
+      `Error Analyzing Code: ${err.message}`,
+      STATUS_CODE.INTERNAL_SERVER_ERROR
+    );
+  }
+}
 
 module.exports={
     chatResponse,
+    analyzeCode
 }

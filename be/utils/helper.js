@@ -43,7 +43,19 @@ async function uploadImage(file,userId){
     }
 }
 
+function extractJSON(text) {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+
+    return JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    throw new Error("Invalid JSON format from AI");
+  }
+}
+
 module.exports={
     getOAuthClient,
-    uploadImage
+    uploadImage,
+    extractJSON
 }
