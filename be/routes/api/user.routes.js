@@ -10,7 +10,7 @@ router.get('/',auth,userControllers.getAllUsers)
 
 router.get('/generateUrl',authControllers.generateRedirectUrl)
 
-router.get('/googleAuthUrl',authControllers.handleGoogleCallback)
+router.get('/googleLogin',authControllers.handleGoogleCallback)
 
 router.get('/profile/:id',auth,userControllers.getUserProfile)
 

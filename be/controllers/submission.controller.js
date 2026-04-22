@@ -52,7 +52,29 @@ async function addSubmission(req, res) {
     }
 }
 
+async function getSubmissionResult(req, res) {
+    const submissionIdSchema = Joi.object({
+        id: Joi.string().required()
+    });
+    try{
+        const {error, value} = submissionIdSchema.validate(req.params);
+
+        if(error){
+            return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+        }
+        const submissionId = value.id;
+        const submissionResult=await submission.findById(submissionId);
+        if(!submissionResult){
+            return sendErrorResponse(res, {}, "Submission not found", STATUS_CODE.NOT_FOUND);
+        }
+        return sendSuccessResponse(res, submissionResult, "Submission result retrieved successfully", STATUS_CODE.SUCCESS);
+    }catch(err){
+        return sendErrorResponse(res, {}, `Error retrieving submission result: ${err.message}`, STATUS_CODE.INTERNAL_SERVER_ERROR);
+    }
+}
+
 
 module.exports = {
     addSubmission,
+    getSubmissionResult
 };

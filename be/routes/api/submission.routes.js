@@ -9,7 +9,7 @@ const auth=require('../../middleware/auth');
 
 router.post('/',auth,submissionController.addSubmission);
 
-
+router.get('/:id',auth,submissionController.getSubmissionResult);
 
 
 module.exports=router;

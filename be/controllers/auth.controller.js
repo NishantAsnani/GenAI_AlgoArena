@@ -149,7 +149,7 @@ async function generateRedirectUrl(req, res) {
 
 async function handleGoogleCallback(req, res) {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-
+  
   try {
     const { code } = req.query;
 

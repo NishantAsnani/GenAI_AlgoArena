@@ -234,7 +234,7 @@ async function editUserProfile(req, res) {
       location: Joi.string().allow(''),
       education: Joi.string().allow(''),
       bio: Joi.string().allow(''),
-      grad_year: Joi.number().integer().min(1900).max(new Date().getFullYear()),
+      grad_year: Joi.number().integer().min(1900),
       mobile: Joi.string().allow(''),
       github: Joi.string().uri().allow(''),
       linkedin: Joi.string().uri().allow(''),
