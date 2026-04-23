@@ -9,7 +9,8 @@ async function addSubmission(req, res) {
     const submissionSchema = Joi.object({
         code: Joi.string().required(),
         language_id: Joi.number().integer().required(),
-        input: Joi.string().optional()
+        problem_id: Joi.string().optional(),
+        input: Joi.string().optional().allow('')
     });
 
     try {
@@ -18,12 +19,10 @@ async function addSubmission(req, res) {
             return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
         }
 
-        console.log(req.user,"user in submission controller");
-
         const newSubmission=await submission.create({
             user_id:req.user.id,
             code:value.code,
-            problem_id:req?.params?.problemId,
+            problem_id: value.problem_id || undefined,
             language_id:value.language_id,
             input:value.input || ""
         });
@@ -37,7 +36,7 @@ async function addSubmission(req, res) {
 
         return sendSuccessResponse(
             res,
-            { jobId: job.id },
+            { jobId: job.id, submission_id: newSubmission._id },
             "Submission queued successfully",
             STATUS_CODE.CREATED
         );
@@ -49,6 +48,24 @@ async function addSubmission(req, res) {
             `Error Adding Submission: ${err.message}`,
             STATUS_CODE.INTERNAL_SERVER_ERROR
         );
+    }
+}
+
+async function getSubmissions(req, res) {
+    try {
+        const { problemId } = req.query;
+
+        const filter = { user_id: req.user.id };
+        if (problemId) filter.problem_id = problemId;
+
+        const submissions = await submission
+            .find(filter)
+            .sort({ submitted_at: -1 })
+            .limit(50);
+
+        return sendSuccessResponse(res, submissions, "Submissions retrieved successfully", STATUS_CODE.SUCCESS);
+    } catch (err) {
+        return sendErrorResponse(res, {}, `Error retrieving submissions: ${err.message}`, STATUS_CODE.INTERNAL_SERVER_ERROR);
     }
 }
 
@@ -73,8 +90,22 @@ async function getSubmissionResult(req, res) {
     }
 }
 
+async function deleteSubmission(req, res) {
+    try {
+        const { id } = req.params;
+        const result = await submission.findOneAndDelete({ _id: id, user_id: req.user.id });
+        if (!result) {
+            return sendErrorResponse(res, {}, "Submission not found", STATUS_CODE.NOT_FOUND);
+        }
+        return sendSuccessResponse(res, {}, "Submission deleted successfully", STATUS_CODE.SUCCESS);
+    } catch (err) {
+        return sendErrorResponse(res, {}, `Error deleting submission: ${err.message}`, STATUS_CODE.INTERNAL_SERVER_ERROR);
+    }
+}
 
 module.exports = {
     addSubmission,
-    getSubmissionResult
+    getSubmissions,
+    getSubmissionResult,
+    deleteSubmission
 };

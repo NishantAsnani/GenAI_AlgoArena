@@ -29,13 +29,95 @@ import {
 } from '../store/slices/modulesSlice'
 import { useTestRunner }            from '../hooks/useTestRunner'
 import { PROBLEMS, getProblemById } from '../data/problems'
-import { problemApi }               from '../api/auth'
+import { problemApi, submissionApi } from '../api/auth'
 import { getStarterCode, generateStarterCode } from '../utils/starterCode'
 import SimpleEditor                 from '../components/editor/SimpleEditor'
 import ProblemDescription           from '../components/editor/ProblemDescription'
 import TestCasePanel                from '../components/editor/TestCasePanel'
 import toast from 'react-hot-toast'
 import AIChatBot from '../components/ai/AIChatBot'
+
+// ── Language id → display name (Judge0 IDs) ───────────────────────────────────
+const LANG_NAMES = {
+  50: 'C', 52: 'C', 54: 'C++', 62: 'Java', 63: 'JavaScript',
+  71: 'Python 3', 72: 'Ruby', 73: 'Rust', 74: 'TypeScript', 75: 'Go',
+}
+
+// ── Safely decode a base64 string (returns original string on failure) ─────────
+function safeBase64Decode(str) {
+  if (!str) return ''
+  try {
+    // atob works in browsers; in Node use Buffer.from(str, 'base64').toString()
+    return atob(str)
+  } catch {
+    return str
+  }
+}
+
+// ── Derive the human-readable verdict from a DB submission document ────────────
+// DB shape: { status: "Completed"|"Pending"|"Failed", test_results: [{ status: { description } }] }
+function deriveVerdict(s) {
+  // If already normalised (re-normalising a normalised object)
+  if (s.verdict && s.verdict !== 'Pending') return s.verdict
+
+  // "Completed" means all test results were run — check whether they all passed
+  if (s.status === 'Completed' && Array.isArray(s.test_results) && s.test_results.length > 0) {
+    const allAccepted = s.test_results.every(
+      tr => tr?.status?.description === 'Accepted' || tr?.status?.id === 3
+    )
+    return allAccepted ? 'Accepted' : 'Wrong Answer'
+  }
+
+  if (s.status === 'Failed') return 'Runtime Error'
+  if (s.status === 'Pending') return 'Pending'
+
+  // Fallback: use the raw status field
+  return s.status || s.verdict || 'Pending'
+}
+
+// ── Count passed / total test cases ───────────────────────────────────────────
+function countTestResults(s) {
+  if (!Array.isArray(s.test_results) || s.test_results.length === 0) {
+    return { passed: s.passed ?? null, total: s.total ?? null }
+  }
+  const total  = s.test_results.length
+  const passed = s.test_results.filter(
+    tr => tr?.status?.description === 'Accepted' || tr?.status?.id === 3
+  ).length
+  return { passed, total }
+}
+
+// ── Normalise a backend submission document → UI shape ─────────────────────────
+function normalizeSubmission(s) {
+  const verdict = deriveVerdict(s)
+  const { passed, total } = countTestResults(s)
+
+  // Decode base64 code — the DB stores Judge0-encoded source
+  const rawCode = s.code || ''
+  const code    = safeBase64Decode(rawCode)
+
+  // Date: DB uses submitted_at (not createdAt)
+  const dateSource = s.submitted_at || s.createdAt || s.created_at
+  const date = dateSource
+    ? new Date(dateSource).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      })
+    : '—'
+
+  return {
+    id:       String(s._id?.$oid || s._id || s.id),
+    _id:      String(s._id?.$oid || s._id || s.id),
+    verdict,
+    language: LANG_NAMES[s.language_id] || `Lang ${s.language_id}`,
+    code,
+    date,
+    // DB uses runtime_ms / memory_kb
+    runtime:  s.runtime_ms  ?? s.runtime  ?? null,
+    memory:   s.memory_kb   ?? s.memory   ?? null,
+    passed,
+    total,
+  }
+}
 
 // ── Normalize a backend (MongoDB) problem → frontend shape ────────────────────
 function normalizeProblem(p) {
@@ -140,7 +222,6 @@ function NavLessonFolder({ lesson, solved, onNavigate, currentId }) {
   const solvedCount = problems.filter(p => solved.includes(p._id || p.id)).length
   const hasActive   = problems.some(p => String(p._id || p.id) === String(currentId))
 
-  // Auto-open if the current problem is in this lesson
   useEffect(() => { if (hasActive) setOpen(true) }, [hasActive])
 
   return (
@@ -258,7 +339,6 @@ function NavigationDrawer({ open, onClose, currentId, onNavigate }) {
 
   return (
     <>
-      {/* Backdrop */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -273,7 +353,6 @@ function NavigationDrawer({ open, onClose, currentId, onNavigate }) {
         )}
       </AnimatePresence>
 
-      {/* Drawer */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -285,7 +364,6 @@ function NavigationDrawer({ open, onClose, currentId, onNavigate }) {
             className="fixed top-0 left-0 h-full z-50 flex flex-col bg-white shadow-2xl"
             style={{ width: '300px' }}
           >
-            {/* Drawer header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-white">
               <div className="flex items-center gap-2">
                 <Layers size={15} className="text-orange-500" />
@@ -299,7 +377,6 @@ function NavigationDrawer({ open, onClose, currentId, onNavigate }) {
               </button>
             </div>
 
-            {/* Drawer body */}
             <div className="flex-1 overflow-y-auto px-3 py-3">
               {modulesLoading ? (
                 <div className="flex items-center justify-center py-12 text-gray-400 text-[13px] gap-2">
@@ -377,7 +454,6 @@ export default function ProblemPage() {
   const [pageState,   setPageState]   = useState('loading')
   const [showNav,     setShowNav]     = useState(false)
 
-  // Ensure modules are loaded for the nav drawer
   useEffect(() => { dispatch(fetchModules()) }, [dispatch])
 
   // ── Resolve the problem (static → store → API) ────────────────────────────
@@ -464,16 +540,91 @@ export default function ProblemPage() {
     running, submitting, runResults, submitResult, activeTab, run, submit, setActiveTab
   } = useTestRunner()
 
-  const subKey = `aa_subs_${user?.email}_${id}`
-  const [submissions, setSubmissions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(subKey)) || [] } catch { return [] }
-  })
-  const saveSubmissions = (arr) => {
-    setSubmissions(arr)
-    localStorage.setItem(subKey, JSON.stringify(arr))
-  }
+  // ── Submissions: fetched from backend ─────────────────────────────────────
+  const [submissions,        setSubmissions]        = useState([])
+  const [submissionsLoading, setSubmissionsLoading] = useState(false)
+
+  const fetchSubmissions = useCallback(async (problemId) => {
+    if (!user) return
+    setSubmissionsLoading(true)
+    try {
+      const res  = await submissionApi.getAll(problemId)
+      // Support both { data: { data: [] } } and { data: [] } response shapes
+      const raw  = res?.data?.data ?? res?.data ?? []
+      const list = Array.isArray(raw) ? raw : []
+      setSubmissions(list.map(normalizeSubmission))
+    } catch (err) {
+      console.error('[ProblemPage] fetchSubmissions error:', err?.message)
+      setSubmissions([])
+    } finally {
+      setSubmissionsLoading(false)
+    }
+  }, [user])
+
+  // Fetch whenever problem changes
+  useEffect(() => {
+    if (pageState === 'found' && id) fetchSubmissions(id)
+  }, [id, pageState, fetchSubmissions])
 
   useEffect(() => { dispatch(resetResults()) }, [id, dispatch])
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleCodeChange = (val) => {
+    dispatch(setCode({ problemId: id, language, code: val }))
+  }
+
+  const handleLanguageChange = (lang) => {
+    dispatch(setLanguage({ problemId: id, language: lang }))
+    const starter = getStarterCode(problem, lang)
+    dispatch(setCode({ problemId: id, language: lang, code: starter }))
+  }
+
+  const handleRun = () => {
+    if (!code.trim()) { toast.error('Write some code first!'); return }
+    run(code, language, problem)
+  }
+
+  const handleSubmit = async () => {
+    if (!code.trim()) { toast.error('Write some code first!'); return }
+    const result = await submit(code, language, problem)
+    if (!result) return
+
+    // Refresh the submissions list from backend now that the job is done
+    await fetchSubmissions(id)
+
+    if (result.verdict === 'Accepted') {
+      dispatch(markProblemSolved({ email: user?.email, problemId: id }))
+      toast.success('🎉 Accepted! Problem solved!', { duration: 4000 })
+    } else {
+      toast.error(`${result.verdict} — ${result.passed}/${result.total} test cases passed`)
+    }
+  }
+
+  const handleDeleteSub = async (subId) => {
+    try {
+      await submissionApi.delete(subId)
+      // Optimistically remove from local state, no need for a full refetch
+      setSubmissions(prev => prev.filter(s => s.id !== subId))
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Could not delete submission.'
+      toast.error(msg)
+    }
+  }
+
+  const navPrev = () => {
+    if (currentIndex > 0) {
+      const prev = allProblems[currentIndex - 1]
+      nav(`/problem/${prev._id || prev.id}`)
+    }
+  }
+  const navNext = () => {
+    if (currentIndex >= 0 && currentIndex < allProblems.length - 1) {
+      const next = allProblems[currentIndex + 1]
+      nav(`/problem/${next._id || next.id}`)
+    }
+  }
+
+  const dc = { Easy: '#16a34a', Medium: '#d97706', Hard: '#dc2626' }
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (pageState === 'loading') {
@@ -503,67 +654,6 @@ export default function ProblemPage() {
     )
   }
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleCodeChange = (val) => {
-    dispatch(setCode({ problemId: id, language, code: val }))
-  }
-
-  const handleLanguageChange = (lang) => {
-    dispatch(setLanguage({ problemId: id, language: lang }))
-    const starter = getStarterCode(problem, lang)
-    dispatch(setCode({ problemId: id, language: lang, code: starter }))
-  }
-
-  const handleRun = () => {
-    if (!code.trim()) { toast.error('Write some code first!'); return }
-    run(code, language, problem)
-  }
-
-  const handleSubmit = async () => {
-    if (!code.trim()) { toast.error('Write some code first!'); return }
-    const result = await submit(code, language, problem)
-    if (!result) return
-
-    const record = {
-      id:      Date.now().toString(),
-      verdict: result.verdict,
-      language,
-      code,
-      date:    new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      runtime: result.runtime,
-      memory:  result.memory,
-      passed:  result.passed,
-      total:   result.total,
-    }
-    saveSubmissions([record, ...submissions])
-
-    if (result.verdict === 'Accepted') {
-      dispatch(markProblemSolved({ email: user?.email, problemId: id }))
-      toast.success('🎉 Accepted! Problem solved!', { duration: 4000 })
-    } else {
-      toast.error(`${result.verdict} — ${result.passed}/${result.total} test cases passed`)
-    }
-  }
-
-  const handleDeleteSub = (subId) => {
-    saveSubmissions(submissions.filter(s => s.id !== subId))
-  }
-
-  const navPrev = () => {
-    if (currentIndex > 0) {
-      const prev = allProblems[currentIndex - 1]
-      nav(`/problem/${prev._id || prev.id}`)
-    }
-  }
-  const navNext = () => {
-    if (currentIndex >= 0 && currentIndex < allProblems.length - 1) {
-      const next = allProblems[currentIndex + 1]
-      nav(`/problem/${next._id || next.id}`)
-    }
-  }
-
-  const dc = { Easy: '#16a34a', Medium: '#d97706', Hard: '#dc2626' }
-
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
 
@@ -581,7 +671,6 @@ export default function ProblemPage() {
         <Logo onClick={() => nav('/dashboard')} />
         <div className="w-px h-5 bg-gray-200 flex-shrink-0" />
 
-        {/* Browse problems button */}
         <button
           onClick={() => setShowNav(true)}
           title="Browse problems"
@@ -595,7 +684,6 @@ export default function ProblemPage() {
 
         <div className="w-px h-5 bg-gray-200 flex-shrink-0" />
 
-        {/* Title + difficulty */}
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {currentIndex >= 0 && (
             <span className="text-[11px] text-gray-400 flex-shrink-0">#{currentIndex + 1}</span>
@@ -609,7 +697,6 @@ export default function ProblemPage() {
           </span>
         </div>
 
-        {/* Prev / Next */}
         <div className="flex items-center gap-1 flex-shrink-0">
           <button onClick={navPrev} disabled={currentIndex <= 0}
             className="p-1.5 rounded text-gray-400 hover:text-black hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
@@ -626,7 +713,6 @@ export default function ProblemPage() {
 
         <div className="w-px h-5 bg-gray-200 flex-shrink-0" />
 
-        {/* Run + Submit */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button onClick={handleRun} disabled={running || submitting}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
@@ -661,6 +747,7 @@ export default function ProblemPage() {
           <ProblemDescription
             problem={problem}
             submissions={submissions}
+            submissionsLoading={submissionsLoading}
             onDeleteSubmission={handleDeleteSub}
           />
         </div>

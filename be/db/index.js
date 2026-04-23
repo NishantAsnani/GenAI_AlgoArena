@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const DB_NAME = process.env.DB_NAME || "mydatabase";
+const DB_NAME = process.env.DB_NAME || "AlgoArena";
 const url = process.env.DB_URL || `mongodb://127.0.0.1:27017/${DB_NAME}`;
 
 const dbconnection =  async function () {

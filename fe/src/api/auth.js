@@ -34,7 +34,15 @@ export const moduleApi = {
 }
 
 export const aiApi = {
-  chat: (prompt) => api.post('/ai/chat', { prompt }),
+  chat:        (prompt)        => api.post('/ai/chat',    { prompt }),
+  analyzeCode: (submissionId) => api.post('/ai/analyze', { submission_id: submissionId }),
+}
+
+export const submissionApi = {
+  getAll:  (problemId) => api.get('/submission', { params: { problemId } }),
+  getById: (id)        => api.get(`/submission/${id}`),
+  submit:  (data)      => api.post('/submission', data),
+  delete:  (id)        => api.delete(`/submission/${id}`),
 }
 
 export default api

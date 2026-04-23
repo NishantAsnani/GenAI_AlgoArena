@@ -3,13 +3,9 @@ const router=express.Router();
 const submissionController=require('../../controllers/submission.controller');
 const auth=require('../../middleware/auth');
 
-
-
-// router.get('/:token',submissionController.getSubmissionResult);
-
-router.post('/',auth,submissionController.addSubmission);
-
-router.get('/:id',auth,submissionController.getSubmissionResult);
-
+router.get('/',    auth, submissionController.getSubmissions);
+router.post('/',   auth, submissionController.addSubmission);
+router.get('/:id', auth, submissionController.getSubmissionResult);
+router.delete('/:id', auth, submissionController.deleteSubmission);
 
 module.exports=router;
