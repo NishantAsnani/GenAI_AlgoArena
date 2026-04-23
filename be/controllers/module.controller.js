@@ -24,10 +24,10 @@ async function getAllModules(req, res) {
             }
         });
 
-        return sendSuccessResponse(res, modules, "Modules fetched successfully");
+        return sendSuccessResponse(res, modules, "Modules fetched successfully", STATUS_CODE.SUCCESS);
     }catch(err){
         console.log(err)
-        return sendErrorResponse(res, err, "Failed to fetch modules");
+        return sendErrorResponse(res, err, "Failed to fetch modules", STATUS_CODE.INTERNAL_SERVER_ERROR);
     }
 }
 
@@ -54,9 +54,9 @@ async function getModuleById(req, res) {
             return sendErrorResponse(res, null, "Module not found", STATUS_CODE.NOT_FOUND);
         }
 
-        return sendSuccessResponse(res, requiredModule, "Module fetched successfully");
+        return sendSuccessResponse(res, requiredModule, "Module fetched successfully", STATUS_CODE.SUCCESS);
     }catch(err){
-        return sendErrorResponse(res, err, "Failed to fetch module");
+        return sendErrorResponse(res, err, "Failed to fetch module", STATUS_CODE.INTERNAL_SERVER_ERROR);
     }
 }
 
@@ -87,7 +87,7 @@ async function createModule(req, res) {
 
         return sendSuccessResponse(res, newModule, "Module created successfully", STATUS_CODE.CREATED);
     }catch(err){
-        return sendErrorResponse(res, err, "Failed to create module");
+        return sendErrorResponse(res, err, "Failed to create module", STATUS_CODE.INTERNAL_SERVER_ERROR);
     }
 }
 
@@ -124,9 +124,9 @@ async function editModule(req, res) {
             return sendErrorResponse(res, null, "Module not found", STATUS_CODE.NOT_FOUND);
         }
 
-        return sendSuccessResponse(res, updatedModule, "Module updated successfully");
+        return sendSuccessResponse(res, updatedModule, "Module updated successfully", STATUS_CODE.SUCCESS);
     }catch(err){
-        return sendErrorResponse(res, err, "Failed to update module");
+        return sendErrorResponse(res, err, "Failed to update module", STATUS_CODE.INTERNAL_SERVER_ERROR);
     }
 }
 

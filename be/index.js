@@ -15,7 +15,12 @@ await dbconnection();
 })();
 
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // <-- Replace with your exact frontend URL (e.g., React/Vite port)
+  credentials: true,               // <-- This allows cookies and Authorization headers
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -29,3 +34,5 @@ app.use('/api',routes)
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
+
+module.exports=app; // Export app for testing

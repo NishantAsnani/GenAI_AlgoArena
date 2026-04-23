@@ -1,5 +1,6 @@
 require('dotenv').config()
-const { submissionQueue,connection } = require('../utils/queue');
+const { submissionQueue } = require('../utils/queue');
+const {connection}=require('./queue')
 const Joi=require('joi');
 const axios=require('axios');
 const { sendErrorResponse, sendSuccessResponse } = require('../utils/response');
@@ -65,13 +66,20 @@ const worker = new Worker('submission-queue', async job => {
 
         // 5. Update Database
         console.log(`Updating submission ${submission_id} with result:`, decodedResult);
+        const requiredSubmission = await submission.findById(submission_id);
 
-        await submission.findByIdAndUpdate(submission_id, {
-            status: "Completed",
-            runtime_ms: result.time,
-            memory_kb: result.memory,
-            test_results: decodedResult
-        });
+        if (!requiredSubmission) {
+            console.error(`Submission ${submission_id} not found in DB!`);
+            return;
+        }
+
+        requiredSubmission.status= decodedResult.status.description === 'Accepted' ? 'Completed' : 'Failed';
+        requiredSubmission.runtime_ms= result.time;
+        requiredSubmission.memory_kb= result.memory;
+        requiredSubmission.test_results= decodedResult;
+
+        await requiredSubmission.save();
+        console.log(`✅ Submission ${submission_id} updated successfully!`);    
 
     } catch (err) {
         console.error(`Job ${job.id} failed:`, err.response?.data || err.message);
