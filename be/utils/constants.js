@@ -11,7 +11,7 @@ CREATED:201
 const LANGUAGE_MAP={
     1:"Python",
     2:"Java",
-    52:"C++",
+    54:"C++",
     4:"JavaScript",
     5:"Go"
 }

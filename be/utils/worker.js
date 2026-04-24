@@ -18,8 +18,7 @@ await dbconnection();
 const worker = new Worker('submission-queue', async job => {
     const { source_code, language_id, input, submission_id } = job.data;
     console.log(`Processing job ${job.id} for submission ${submission_id}...`);
-    
-    // 1. Validate Environment Variables
+
     const headers = {
         'x-rapidapi-key': process.env.JUDGE0_KEY,
         'x-rapidapi-host': process.env.JUDGE0_HOST,
@@ -27,13 +26,12 @@ const worker = new Worker('submission-queue', async job => {
     };
 
     try {
-        // 2. Create submission with Base64 encoding
         const createRes = await axios.post(
             "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=false",
             {
-                source_code:source_code,
+                source_code: Buffer.from(source_code).toString('base64'),
                 language_id,
-                stdin: input ? input : ""
+                stdin: Buffer.from(input ? input : "").toString('base64')
             },
             { headers }
         );
@@ -41,14 +39,12 @@ const worker = new Worker('submission-queue', async job => {
         const token = createRes.data.token;
         let result;
 
-        // 3. Poll for result
         while (true) {
             const res = await axios.get(
                 `https://judge0-ce.p.rapidapi.com/submissions/${token}?base64_encoded=true`,
                 { headers }
             );
 
-            // status.id < 3 means "In Queue" or "Processing"
             if (res.data.status.id >= 3) {
                 result = res.data;
                 break;
@@ -56,7 +52,6 @@ const worker = new Worker('submission-queue', async job => {
             await new Promise(r => setTimeout(r, 1500)); 
         }
 
-        // 4. Decode results
         const decodedResult = {
             stdout: result.stdout ? Buffer.from(result.stdout, 'base64').toString() : null,
             stderr: result.stderr ? Buffer.from(result.stderr, 'base64').toString() : null,
@@ -64,7 +59,6 @@ const worker = new Worker('submission-queue', async job => {
             status: result.status
         };
 
-        // 5. Update Database
         console.log(`Updating submission ${submission_id} with result:`, decodedResult);
         const requiredSubmission = await submission.findById(submission_id);
 
@@ -76,17 +70,15 @@ const worker = new Worker('submission-queue', async job => {
         requiredSubmission.status= decodedResult.status.description === 'Accepted' ? 'Completed' : 'Failed';
         requiredSubmission.runtime_ms= result.time;
         requiredSubmission.memory_kb= result.memory;
-        requiredSubmission.test_results= decodedResult;
+        // Store as array to match mongoose schema: test_results: [{ type: Object }]
+        requiredSubmission.test_results= [decodedResult];
 
         await requiredSubmission.save();
         console.log(`✅ Submission ${submission_id} updated successfully!`);    
 
     } catch (err) {
         console.error(`Job ${job.id} failed:`, err.response?.data || err.message);
-        // Update DB to failed status if needed
         await submission.findByIdAndUpdate(submission_id, { status: "Failed" });
         throw err; 
     }
 }, { connection });
-
-

@@ -1,136 +1,150 @@
 // src/hooks/useTestRunner.js
-// ─────────────────────────────────────────────────────────────────────────────
-// Test Runner Hook — handles Run and Submit with mock execution
-// CURRENT MODE : Mock  |  BACKEND MODE : Uncomment "BACKEND:" sections
-// ─────────────────────────────────────────────────────────────────────────────
-import { useCallback } from 'react'
-import { useAppDispatch, useAppSelector } from './redux'
-import {
-  setRunning, setSubmitting,
-  setRunResults, setSubmitResult,
-  selectRunning, selectSubmitting,
-  selectRunResults, selectSubmitResult,
-  selectActiveTab, setActiveTab,
-} from '../store/slices/editorSlice'
+import { useState } from 'react'
+import { submissionApi } from '../api/auth'
 
-// BACKEND: Uncomment when backend + Judge0 are ready
-// import axios from 'axios'
-// const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-// const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('aa_token')}` })
+const LANG_ID = { C: 50, 'C++': 54, Java: 62, Python: 71 }
 
-// ── Mock delay ────────────────────────────────────────────────────────────────
-const delay = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-// ── Mock execution logic ──────────────────────────────────────────────────────
-// Passes if code.trim().length > 50 chars (replace with real Judge0 call)
-const mockExecute = async (code, testCases) => {
-  await delay(1200)
-  const passes = code.trim().length > 50
-  return testCases.map((tc, i) => ({
-    input:    tc.input,
-    expected: tc.expected,
-    actual:   passes ? tc.expected : (i === 0 ? tc.expected : 'null'),
-    passed:   passes ? true : i === 0,
-    time:     `${Math.floor(Math.random() * 60 + 10)}ms`,
-    memory:   `${(Math.random() * 8 + 8).toFixed(1)}MB`,
-  }))
+async function pollUntilDone(submissionId) {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    await sleep(2000)
+    const res = await submissionApi.getById(submissionId)
+    const sub = res?.data?.data ?? res?.data
+    if (sub?.status && sub.status !== 'Pending') return sub
+  }
+  throw new Error('Polling timed out')
+}
+
+// ── test_results is stored as an array [{stdout,stderr,...}] in DB ────────────
+function getOutput(sub) {
+  // test_results can be an array (mongoose schema) or a plain object
+  const tr = Array.isArray(sub?.test_results)
+    ? sub.test_results[0]
+    : sub?.test_results
+  if (!tr) return ''
+  if (tr.compile_output) return `[Compile Error] ${tr.compile_output.trim()}`
+  if (tr.stderr)         return `[Runtime Error] ${tr.stderr.trim()}`
+  if (tr.stdout)         return tr.stdout.trim()
+  return ''
+}
+
+// ── Normalise input: "2, 3"  →  "2\n3"  so stdin works for all languages ─────
+function normalizeInput(raw) {
+  if (!raw) return ''
+  // Replace ", " or "," separators with newline so cin/Scanner/input() all work
+  return String(raw).replace(/,\s*/g, '\n').trim()
+}
+
+async function runOne(code, langId, input, problemId) {
+  const payload = { code, language_id: langId, input: normalizeInput(input) }
+  if (problemId) payload.problem_id = problemId
+
+  const res = await submissionApi.submit(payload)
+  const submissionId =
+    res?.data?.data?.submission_id ??
+    res?.data?.submission_id
+
+  if (!submissionId) throw new Error('No submission_id returned from server')
+  return pollUntilDone(submissionId)
 }
 
 export function useTestRunner() {
-  const dispatch     = useAppDispatch()
-  const running      = useAppSelector(selectRunning)
-  const submitting   = useAppSelector(selectSubmitting)
-  const runResults   = useAppSelector(selectRunResults)
-  const submitResult = useAppSelector(selectSubmitResult)
-  const activeTab    = useAppSelector(selectActiveTab)
+  const [running,      setRunning]      = useState(false)
+  const [submitting,   setSubmitting]   = useState(false)
+  const [runResults,   setRunResults]   = useState(null)
+  const [submitResult, setSubmitResult] = useState(null)
+  const [activeTab,    setActiveTab]    = useState('testcases')
 
-  // ── RUN: sample test cases only ──────────────────────────────────────────
-  const run = useCallback(async (code, language, problem) => {
-    if (!code.trim()) return
-    dispatch(setRunning(true))
-    dispatch(setActiveTab('results'))
+  const run = async (code, language, problem) => {
+    setRunning(true)
+    setRunResults(null)
+    setSubmitResult(null)
+    setActiveTab('results')
+
+    const langId = LANG_ID[language] || 71
+    const tcs    = problem?.sampleTestCases || []
 
     try {
-      // BACKEND: Uncomment below & delete mock block when backend is ready
-      // ─────────────────────────────────────────────────────────────────
-      // const { data } = await axios.post(`${API_URL}/submissions/run`, {
-      //   problem_id: problem.id,
-      //   language,
-      //   code,
-      // }, { headers: authHeader() })
-      // dispatch(setRunResults(data.data.results))
-      // ─────────────────────────────────────────────────────────────────
-
-      // ── MOCK ──
-      const results = await mockExecute(code, problem.sampleTestCases)
-      dispatch(setRunResults(results))
-
+      const results = await Promise.all(
+        tcs.map(async (tc) => {
+          const sub      = await runOne(code, langId, tc.input)
+          const actual   = getOutput(sub)
+          const expected = String(tc.expected ?? '').trim()
+          const passed   = actual === expected
+          return {
+            input:    String(tc.input ?? ''),
+            expected,
+            actual,
+            passed,
+            time: sub?.runtime_ms ? `${sub.runtime_ms}s` : null,
+          }
+        })
+      )
+      setRunResults(results)
     } catch (err) {
-      console.error('Run error:', err)
+      console.error('[useTestRunner] run error:', err)
     } finally {
-      dispatch(setRunning(false))
+      setRunning(false)
     }
-  }, [dispatch])
+  }
 
-  // ── SUBMIT: all test cases, returns result ────────────────────────────────
-  const submit = useCallback(async (code, language, problem) => {
-    if (!code.trim()) return null
-    dispatch(setSubmitting(true))
-    dispatch(setActiveTab('results'))
+  const submit = async (code, language, problem) => {
+    setSubmitting(true)
+    setSubmitResult(null)
+    setRunResults(null)
+    setActiveTab('results')
+
+    const langId    = LANG_ID[language] || 71
+    const sampleTCs = problem?.sampleTestCases || []
+    const hiddenTCs = problem?.hiddenTestCases  || []
+    const allTCs    = [...sampleTCs, ...hiddenTCs]
 
     try {
-      // BACKEND: Uncomment below & delete mock block when backend is ready
-      // ─────────────────────────────────────────────────────────────────
-      // const { data } = await axios.post(`${API_URL}/submissions/submit`, {
-      //   problem_id: problem.id,
-      //   language,
-      //   code,
-      // }, { headers: authHeader() })
-      // const result = {
-      //   verdict: data.data.status,
-      //   passed:  data.data.passed_count,
-      //   total:   data.data.total_count,
-      //   runtime: data.data.runtime_ms ? `${data.data.runtime_ms}ms` : '—',
-      //   memory:  data.data.memory_kb  ? `${data.data.memory_kb}KB`  : '—',
-      //   submissionId: data.data._id,
-      // }
-      // dispatch(setSubmitResult(result))
-      // return result
-      // ─────────────────────────────────────────────────────────────────
+      const results = await Promise.all(
+        allTCs.map(async (tc, i) => {
+          const sub      = await runOne(code, langId, tc.input, i === 0 ? problem?.id : undefined)
+          const actual   = getOutput(sub)
+          const expected = String(tc.expected ?? '').trim()
+          const passed   = actual === expected
+          return {
+            input:    String(tc.input ?? ''),
+            expected,
+            actual,
+            passed,
+            time:     sub?.runtime_ms ? `${sub.runtime_ms}s` : null,
+            isHidden: i >= sampleTCs.length,
+          }
+        })
+      )
 
-      // ── MOCK ──
-      await delay(1600)
-      const willPass  = code.trim().length > 50
-      const allCases  = [...problem.sampleTestCases, ...(problem.hiddenTestCases || [])]
-      const passed    = willPass ? allCases.length : Math.floor(allCases.length * 0.4)
-      const result    = {
-        verdict:  willPass ? 'Accepted' : 'Wrong Answer',
-        passed,
-        total:    allCases.length,
-        runtime:  willPass ? `${Math.floor(Math.random() * 80 + 20)}ms` : '—',
-        memory:   willPass ? `${Math.floor(Math.random() * 8 + 10)}MB`  : '—',
+      const passedCount = results.filter((r) => r.passed).length
+      const total       = results.length
+      const verdict     = passedCount === total ? 'Accepted' : 'Wrong Answer'
+
+      const result = {
+        verdict,
+        passed:      passedCount,
+        total,
+        runtime:     results[0]?.time || '—',
+        memory:      '—',
+        testResults: results,
       }
-      dispatch(setSubmitResult(result))
-      return result
 
+      setSubmitResult(result)
+      return result
     } catch (err) {
-      console.error('Submit error:', err)
+      console.error('[useTestRunner] submit error:', err)
       return null
     } finally {
-      dispatch(setSubmitting(false))
+      setSubmitting(false)
     }
-  }, [dispatch])
-
-  // ── Reset results ─────────────────────────────────────────────────────────
-  const reset = useCallback(() => {
-    dispatch(setActiveTab('testcases'))
-  }, [dispatch])
+  }
 
   return {
     running, submitting,
     runResults, submitResult,
-    activeTab,
-    run, submit, reset,
-    setActiveTab: (tab) => dispatch(setActiveTab(tab)),
+    activeTab, setActiveTab,
+    run, submit,
   }
 }

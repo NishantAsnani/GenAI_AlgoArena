@@ -48,37 +48,55 @@ submissionSchema.post('save', async function(doc) {
         progress.last_activity = Date.now();
 
         // ==========================================
-        // 5. CHECK LESSON COMPLETION
+        // 5. Fetch lesson_id & module_id from Problem
+        // (Submission doesn't carry these fields directly)
         // ==========================================
-        const totalProblemsInLesson = await Problem.countDocuments({ lesson_id: doc.lesson_id });
+        const problem = await Problem.findById(doc.problem_id);
+        if (!problem) {
+            await progress.save();
+            return;
+        }
+        const lesson_id = problem.lesson_id;
+
+        const lesson = await Lesson.findById(lesson_id);
+        if (!lesson) {
+            await progress.save();
+            return;
+        }
+        const module_id = lesson.module_id;
+
+        // ==========================================
+        // 6. CHECK LESSON COMPLETION
+        // ==========================================
+        const totalProblemsInLesson = await Problem.countDocuments({ lesson_id });
         
         // Count how many of this user's solved_problems belong to this specific lesson
         const solvedInLesson = await Problem.countDocuments({
             _id: { $in: progress.solved_problems },
-            lesson_id: doc.lesson_id
+            lesson_id
         });
 
         if (solvedInLesson === totalProblemsInLesson) {
             // Lesson finished!
-            if (!progress.completed_lessons.includes(doc.lesson_id)) {
-                progress.completed_lessons.push(doc.lesson_id);
+            if (!progress.completed_lessons.includes(lesson_id)) {
+                progress.completed_lessons.push(lesson_id);
 
                 // ==========================================
-                // 6. CHECK MODULE COMPLETION
+                // 7. CHECK MODULE COMPLETION
                 // (Only runs if a lesson was just completed)
                 // ==========================================
-                const totalLessonsInModule = await Lesson.countDocuments({ module_id: doc.module_id });
+                const totalLessonsInModule = await Lesson.countDocuments({ module_id });
                 
                 // Count how many of this user's completed_lessons belong to this specific module
                 const solvedLessonsInModule = await Lesson.countDocuments({
                     _id: { $in: progress.completed_lessons },
-                    module_id: doc.module_id
+                    module_id
                 });
 
                 if (solvedLessonsInModule === totalLessonsInModule) {
                     // Module finished!
-                    if (!progress.completed_modules.includes(doc.module_id)) {
-                        progress.completed_modules.push(doc.module_id);
+                    if (!progress.completed_modules.includes(module_id)) {
+                        progress.completed_modules.push(module_id);
                     }
                 }
             }

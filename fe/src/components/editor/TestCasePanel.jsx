@@ -40,7 +40,7 @@ function ResultRow({ result, index, isHidden }) {
           {!isHidden && (
             <div>
               <span className="text-gray-400 text-[11px] uppercase tracking-wide">Input</span>
-              <div className="mt-1 px-2 py-1.5 rounded bg-gray-50 text-black">{result.input}</div>
+              <div className="mt-1 px-2 py-1.5 rounded bg-gray-50 text-black whitespace-pre-wrap">{result.input}</div>
             </div>
           )}
           <div>
@@ -51,7 +51,7 @@ function ResultRow({ result, index, isHidden }) {
           </div>
           <div>
             <span className="text-gray-400 text-[11px] uppercase tracking-wide">Your Output</span>
-            <div className={`mt-1 px-2 py-1.5 rounded ${
+            <div className={`mt-1 px-2 py-1.5 rounded whitespace-pre-wrap ${
               result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
             }`}>
               {result.actual || '(no output)'}
@@ -197,10 +197,15 @@ export default function TestCasePanel({
             </div>
           )}
 
-          {/* Results tab — after Submit */}
+          {/* Results tab — after Submit: banner + all per-test rows */}
           {!isLoading && activeTab === 'results' && submitResult && (
             <div>
               <VerdictBanner result={submitResult} />
+              {Array.isArray(submitResult.testResults) &&
+                submitResult.testResults.map((r, i) => (
+                  <ResultRow key={i} result={r} index={i} isHidden={!!r.isHidden} />
+                ))
+              }
             </div>
           )}
 
