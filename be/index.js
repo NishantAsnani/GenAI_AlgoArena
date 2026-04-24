@@ -16,8 +16,8 @@ await dbconnection();
 
 
 app.use(cors({
-  origin: 'http://localhost:5173', // <-- Replace with your exact frontend URL (e.g., React/Vite port)
-  credentials: true,               // <-- This allows cookies and Authorization headers
+  origin: 'http://localhost:5173', 
+  credentials: true,               
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -28,7 +28,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 
 app.use('/api',routes)
-
 
 
 app.listen(PORT, () => {

@@ -4,52 +4,166 @@ const { submissionQueue } = require('../utils/queue');
 const { sendErrorResponse, sendSuccessResponse } = require('../utils/response');
 const { STATUS_CODE } = require('../utils/constants');
 const submission=require('../models/submission');
+const Problem=require('../models/Problem');
+const {encode, decode} = require('../utils/helper');
 
-async function addSubmission(req, res) {
-    const submissionSchema = Joi.object({
-        code: Joi.string().required(),
-        language_id: Joi.number().integer().required(),
-        problem_id: Joi.string().optional(),
-        input: Joi.string().optional().allow('')
+async function runCode(req, res) {
+  const schema = Joi.object({
+    code:        Joi.string().required(),
+    language_id: Joi.number().integer().min(1).required(),
+    problem_id:  Joi.string().optional(),
+    input:       Joi.string().optional().allow('')
+  });
+
+  const { error, value } = schema.validate(req.body);
+  if (error) return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+
+  try {
+
+    let visibleTestCases = [];
+    if (value.problem_id) {
+      const problem = await Problem.findById(value.problem_id).select('test_cases');
+      if (!problem) return sendErrorResponse(res, {}, "Problem not found", STATUS_CODE.NOT_FOUND);
+      visibleTestCases = problem.test_cases.filter(tc => tc.isHidden === false);
+    } else if (value.input) {
+
+      visibleTestCases = [{ input: value.input, expected_output: null }];
+    }
+
+    let submissionDoc  = null;
+    let shouldUpdateDB = true;
+
+    if (value.problem_id) {
+      submissionDoc = await submission.findOne({
+        user_id:    req.user.id,
+        problem_id: value.problem_id
+      });
+    }
+
+  
+    if (!submissionDoc) {
+      // No entry → create run entry
+      submissionDoc = await submission.create({
+        user_id:      req.user.id,
+        problem_id:   value.problem_id || undefined,
+        language_id:  value.language_id,
+        code:         value.code,
+        is_submitted: false,
+        status:       'Pending'
+      });
+
+    } else if (!submissionDoc.is_submitted) {
+      // Entry exists, not submitted yet → patch with latest code
+      submissionDoc.code        = value.code;
+      submissionDoc.language_id = value.language_id;
+      submissionDoc.status      = 'Pending';
+      await submissionDoc.save();
+
+    } else {
+      // Already submitted → ghost run, no DB touch
+      shouldUpdateDB = false;
+    }
+
+    const job = await submissionQueue.add('run-code', {
+      source_code:    value.code,
+      language_id:    value.language_id,
+      test_cases:     visibleTestCases,           
+      submission_id:  shouldUpdateDB ? submissionDoc._id.toString() : null,
+      is_run:         true
     });
 
-    try {
-        const { error, value } = submissionSchema.validate(req.body);
-        if (error) {
-            return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
-        }
+    return sendSuccessResponse(
+      res,
+      {
+        jobId:         job.id,
+        submission_id: shouldUpdateDB ? submissionDoc._id : null,
+        db_updated:    shouldUpdateDB
+      },
+      "Code queued for execution",
+      STATUS_CODE.CREATED
+    );
 
-        const newSubmission=await submission.create({
-            user_id:req.user.id,
-            code:value.code,
-            problem_id: value.problem_id || undefined,
-            language_id:value.language_id,
-            input:value.input || ""
-        });
-
-        const job = await submissionQueue.add('execute-code', {
-            source_code: value.code,
-            submission_id:newSubmission._id,
-            language_id: value.language_id,
-            input: value.input || ""
-        });
-
-        return sendSuccessResponse(
-            res,
-            { jobId: job.id, submission_id: newSubmission._id },
-            "Submission queued successfully",
-            STATUS_CODE.CREATED
-        );
-
-    } catch (err) {
-        sendErrorResponse(
-            res,
-            {},
-            `Error Adding Submission: ${err.message}`,
-            STATUS_CODE.INTERNAL_SERVER_ERROR
-        );
-    }
+  } catch (err) {
+    sendErrorResponse(res, {}, `Error: ${err.message}`, STATUS_CODE.INTERNAL_SERVER_ERROR);
+  }
 }
+
+
+// ─── POST /submit ─────────────────────────────────────────────────────────────
+async function addSubmission(req, res) {
+  const schema = Joi.object({
+    code:        Joi.string().required(),
+    language_id: Joi.number().integer().min(1).required(),
+    problem_id:  Joi.string().required()
+  });
+
+  const { error, value } = schema.validate(req.body);
+  if (error) return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+
+  try {
+    // Fetch HIDDEN test cases only
+    const problem = await Problem.findById(value.problem_id).select('test_cases');
+    if (!problem) return sendErrorResponse(res, {}, "Problem not found", STATUS_CODE.NOT_FOUND);
+
+    const hiddenTestCases = problem.test_cases; // [{ input, expected_output }]
+
+    let submissionDoc = null;
+
+    // Look for an un-submitted entry for this user + problem
+    const existingRun = await submission.findOne({
+      user_id:      req.user.id,
+      problem_id:   value.problem_id,
+      is_submitted: false
+    });
+
+    // ── DB decision tree ───────────────────────────────────────────────────
+    if (existingRun) {
+      // Patch the run entry and promote it to a submission
+      existingRun.code              = encode(value.code);
+      existingRun.language_id       = value.language_id;
+      existingRun.is_submitted      = true;
+      existingRun.status            = 'Pending';
+      existingRun.submitted_at      = new Date();
+      existingRun.test_results_hidden = [];   // clear any stale hidden results
+      await existingRun.save();
+      submissionDoc = existingRun;
+
+    } else {
+      // No un-submitted entry (either no entry at all, or prior submit exists)
+      // → always create a fresh submission
+      submissionDoc = await submission.create({
+        user_id:      req.user.id,
+        problem_id:   value.problem_id,
+        language_id:  value.language_id,
+        code:         encode(value.code),
+        is_submitted: true,
+        status:       'Pending',
+        submitted_at: new Date()
+      });
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
+    const job = await submissionQueue.add('execute-submission', {
+      source_code:   value.code,
+      language_id:   value.language_id,
+      submission_id: submissionDoc._id.toString(),
+      test_cases:    hiddenTestCases,            // hidden test cases only
+      is_run:        false
+    });
+
+    return sendSuccessResponse(
+      res,
+      { jobId: job.id, submission_id: submissionDoc._id },
+      "Submission queued successfully",
+      STATUS_CODE.CREATED
+    );
+
+  } catch (err) {
+    sendErrorResponse(res, {}, `Error Adding Submission: ${err.message}`, STATUS_CODE.INTERNAL_SERVER_ERROR);
+  }
+}
+
+
 
 async function getSubmissions(req, res) {
     try {
@@ -103,9 +217,14 @@ async function deleteSubmission(req, res) {
     }
 }
 
+// async function addBatchSubmissions(req, res) {
+//     const batchSubmissionSchema = Joi.object({
+//         submissions: Joi.array().items(
+
 module.exports = {
     addSubmission,
     getSubmissions,
     getSubmissionResult,
-    deleteSubmission
+    deleteSubmission,
+    runCode
 };

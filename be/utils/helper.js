@@ -54,8 +54,13 @@ function extractJSON(text) {
   }
 }
 
+const encode = (str) => (str != null ? Buffer.from(str).toString('base64') : undefined);
+const decode = (str) => (str        ? Buffer.from(str, 'base64').toString() : null);
+
 module.exports={
     getOAuthClient,
     uploadImage,
-    extractJSON
+    extractJSON,
+    encode,
+    decode
 }

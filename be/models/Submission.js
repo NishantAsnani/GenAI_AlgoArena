@@ -6,11 +6,12 @@ const submissionSchema = new mongoose.Schema({
   problem_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },
   language_id: { type: Number, required: true },
   code: { type: String, required: true },
-  status: { type: String, default: 'Pending', enum: ['Pending', 'Completed', 'Failed'] }, // e.g., Accepted, Wrong Answer
+  status: { type: String, default: 'Pending', enum: ['Pending', 'Completed', 'Failed','RunTimeError', 'CompilationError'] }, // e.g., Accepted, Wrong Answer
   runtime_ms: { type: Number },
   memory_kb: { type: Number },
   test_results: [{ type: Object }],
-  complexity: { type: Object },
+  test_results_hidden: [{ type: Object }],
+  is_submitted:{type:Boolean, default:false},
   submitted_at: { type: Date, default: Date.now }
 });
 
