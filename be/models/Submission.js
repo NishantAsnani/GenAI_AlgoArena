@@ -12,7 +12,9 @@ const submissionSchema = new mongoose.Schema({
   test_results: [{ type: Object }],
   test_results_hidden: [{ type: Object }],
   is_submitted:{type:Boolean, default:false},
-  submitted_at: { type: Date, default: Date.now }
+  submitted_at: { type: Date, default: Date.now },
+  passed_tests:{type:Number, default:0},
+  total_tests:{type:Number, default:0}
 });
 
 

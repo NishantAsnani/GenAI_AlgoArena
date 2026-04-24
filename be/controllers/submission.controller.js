@@ -7,6 +7,9 @@ const submission=require('../models/submission');
 const Problem=require('../models/Problem');
 const {encode, decode} = require('../utils/helper');
 
+
+
+
 async function runCode(req, res) {
   const schema = Joi.object({
     code:        Joi.string().required(),
@@ -19,14 +22,18 @@ async function runCode(req, res) {
   if (error) return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
 
   try {
-
     let visibleTestCases = [];
+    let hiddenTestCases  = [];
+
     if (value.problem_id) {
       const problem = await Problem.findById(value.problem_id).select('test_cases');
       if (!problem) return sendErrorResponse(res, {}, "Problem not found", STATUS_CODE.NOT_FOUND);
-      visibleTestCases = problem.test_cases.filter(tc => tc.isHidden === false);
-    } else if (value.input) {
 
+      visibleTestCases = problem.test_cases.filter(tc => tc.isHidden === false);
+      hiddenTestCases  = problem.test_cases.filter(tc => tc.isHidden === true);
+
+    } else if (value.input) {
+      // Playground mode — no problem, just raw input, no expected output
       visibleTestCases = [{ input: value.input, expected_output: null }];
     }
 
@@ -40,21 +47,21 @@ async function runCode(req, res) {
       });
     }
 
-  
+
     if (!submissionDoc) {
-      // No entry → create run entry
+      // No entry at all → create a new run entry
       submissionDoc = await submission.create({
         user_id:      req.user.id,
         problem_id:   value.problem_id || undefined,
         language_id:  value.language_id,
-        code:         value.code,
+        code:         encode(value.code),
         is_submitted: false,
         status:       'Pending'
       });
 
     } else if (!submissionDoc.is_submitted) {
-      // Entry exists, not submitted yet → patch with latest code
-      submissionDoc.code        = value.code;
+      // Existing un-submitted entry → patch with latest code
+      submissionDoc.code        = encode(value.code);
       submissionDoc.language_id = value.language_id;
       submissionDoc.status      = 'Pending';
       await submissionDoc.save();
@@ -63,13 +70,15 @@ async function runCode(req, res) {
       // Already submitted → ghost run, no DB touch
       shouldUpdateDB = false;
     }
+    // ─────────────────────────────────────────────────────────────────────
 
     const job = await submissionQueue.add('run-code', {
-      source_code:    value.code,
-      language_id:    value.language_id,
-      test_cases:     visibleTestCases,           
-      submission_id:  shouldUpdateDB ? submissionDoc._id.toString() : null,
-      is_run:         true
+      source_code:       value.code,
+      language_id:       value.language_id,
+      test_cases:        visibleTestCases,
+      test_cases_hidden: hiddenTestCases,
+      submission_id:     shouldUpdateDB ? submissionDoc._id.toString() : null,
+      is_run:            true
     });
 
     return sendSuccessResponse(
@@ -101,36 +110,35 @@ async function addSubmission(req, res) {
   if (error) return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
 
   try {
-    // Fetch HIDDEN test cases only
+    // Fetch ALL test cases — visible + hidden
     const problem = await Problem.findById(value.problem_id).select('test_cases');
     if (!problem) return sendErrorResponse(res, {}, "Problem not found", STATUS_CODE.NOT_FOUND);
 
-    const hiddenTestCases = problem.test_cases; // [{ input, expected_output }]
+    const allTestCases = problem.test_cases;
 
     let submissionDoc = null;
 
-    // Look for an un-submitted entry for this user + problem
+    // Look for an existing un-submitted entry for this user + problem
     const existingRun = await submission.findOne({
       user_id:      req.user.id,
       problem_id:   value.problem_id,
       is_submitted: false
     });
 
-    // ── DB decision tree ───────────────────────────────────────────────────
+    // ── DB decision tree ──────────────────────────────────────────────────
     if (existingRun) {
-      // Patch the run entry and promote it to a submission
-      existingRun.code              = encode(value.code);
-      existingRun.language_id       = value.language_id;
-      existingRun.is_submitted      = true;
-      existingRun.status            = 'Pending';
-      existingRun.submitted_at      = new Date();
-      existingRun.test_results_hidden = [];   // clear any stale hidden results
+      // Promote existing run entry to a real submission
+      existingRun.code                = encode(value.code);
+      existingRun.language_id         = value.language_id;
+      existingRun.is_submitted        = true;
+      existingRun.status              = 'Pending';
+      existingRun.submitted_at        = new Date();
+      existingRun.test_results_hidden = [];   // clear stale hidden run results
       await existingRun.save();
       submissionDoc = existingRun;
 
     } else {
-      // No un-submitted entry (either no entry at all, or prior submit exists)
-      // → always create a fresh submission
+      // No un-submitted entry OR prior submit already exists → fresh submission
       submissionDoc = await submission.create({
         user_id:      req.user.id,
         problem_id:   value.problem_id,
@@ -141,13 +149,13 @@ async function addSubmission(req, res) {
         submitted_at: new Date()
       });
     }
-    // ──────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
 
     const job = await submissionQueue.add('execute-submission', {
       source_code:   value.code,
       language_id:   value.language_id,
       submission_id: submissionDoc._id.toString(),
-      test_cases:    hiddenTestCases,            // hidden test cases only
+      test_cases:    allTestCases,
       is_run:        false
     });
 
@@ -162,6 +170,8 @@ async function addSubmission(req, res) {
     sendErrorResponse(res, {}, `Error Adding Submission: ${err.message}`, STATUS_CODE.INTERNAL_SERVER_ERROR);
   }
 }
+
+module.exports = { runCode, addSubmission };
 
 
 

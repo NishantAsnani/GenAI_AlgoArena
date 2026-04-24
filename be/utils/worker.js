@@ -1,10 +1,10 @@
 // workers/submissionWorker.js
 require('dotenv').config();
-const { Worker }   = require('bullmq');
-const axios        = require('axios');
+const { Worker }     = require('bullmq');
+const axios          = require('axios');
 const { connection } = require('../utils/queue');
-const submission   = require('../models/submission');
-const dbconnection = require('../db');
+const submission     = require('../models/submission');
+const dbconnection   = require('../db');
 
 (async () => { await dbconnection(); })();
 
@@ -17,18 +17,14 @@ const headers = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const encode    = (str) => (str != null ? Buffer.from(str).toString('base64') : undefined);
+const decode    = (str) => (str        ? Buffer.from(str, 'base64').toString() : null);
+const normalize = (s)   => (s ?? '').trim().replace(/\r\n/g, '\n');
 
-const encode = (str) => (str != null ? Buffer.from(str).toString('base64') : undefined);
-const decode = (str) => (str        ? Buffer.from(str, 'base64').toString() : null);
-// Normalize before comparing: trim surrounding whitespace + unify line endings.
-// This prevents false Wrong-Answer verdicts caused by a trailing '\n' or '\r\n'
-// that the program emits but the stored expected_output omits (or vice-versa).
-const normalize = (s) => (s ?? '').trim().replace(/\r\n/g, '\n');
-
-async function sendBatch(submissions) {
+async function sendBatch(payload) {
   const res = await axios.post(
     `${JUDGE0_URL}/submissions/batch?base64_encoded=true`,
-    { submissions },
+    { submissions: payload },
     { headers }
   );
   return res.data.map(t => t.token);
@@ -47,16 +43,24 @@ async function pollBatch(tokens) {
   }
 }
 
+function buildPayload(source_code, language_id, test_cases) {
+  return test_cases.map(tc => ({
+    source_code: encode(source_code),
+    language_id,
+    stdin:       encode(tc.input ?? '')
+  }));
+}
+
 function shapeResult(r, tc) {
   const actualOutput   = decode(r.stdout);
   const expectedOutput = tc.expected_output ?? null;
 
-  // Judge0 status 3 = no compile/runtime error (code ran successfully).
-  // We do our own output comparison so we are not affected by Judge0's
-  // strict byte-for-byte match (which fails on trailing newlines, CRLF, etc.).
   const ranSuccessfully = r.status.id === 3;
   const outputMatches   = normalize(actualOutput) === normalize(expectedOutput);
-  const passed          = ranSuccessfully && outputMatches;
+  // If no expected output (playground mode), just check it ran successfully
+  const passed = expectedOutput === null
+    ? ranSuccessfully
+    : ranSuccessfully && outputMatches;
 
   return {
     input:           tc.input,
@@ -69,73 +73,96 @@ function shapeResult(r, tc) {
   };
 }
 
+function deriveStatus(results, shaped) {
+  if (results.some(r => r.status.id === 6))                              return 'CompilationError';
+  if (results.some(r => [7, 8, 9, 10, 11, 12].includes(r.status.id)))   return 'RunTimeError';
+  if (results.some(r => r.status.id === 5))                              return 'Failed';  // TLE
+  return shaped.every(r => r.passed) ? 'Completed' : 'Failed';          // WA
+}
+
 // ─── Worker ───────────────────────────────────────────────────────────────────
 
 const worker = new Worker('submission-queue', async job => {
-  const { source_code, language_id, test_cases, submission_id, is_run } = job.data;
+  const {
+    source_code,
+    language_id,
+    test_cases,
+    test_cases_hidden,
+    submission_id,
+    is_run
+  } = job.data;
+
   console.log(`Processing job [${job.name}] id=${job.id}`);
 
   try {
-    
-    const batchPayload = test_cases.map(tc => ({
-      source_code: encode(source_code),
-      language_id,
-      stdin:       encode(tc.input ?? ''),
-    }));
 
-    const tokens  = await sendBatch(batchPayload);
-    const results = await pollBatch(tokens);
-
-    const shaped = results.map((r, i) => shapeResult(r, test_cases[i]));
-
-    const passedCount = shaped.filter(r => r.passed).length;
-    const maxRuntime  = Math.max(...results.map(r => r.time   || 0));
-    const maxMemory   = Math.max(...results.map(r => r.memory || 0));
-
+    // ── RUN ────────────────────────────────────────────────────────────────
     if (is_run) {
-      const runStatus = results[0].status.id === 6
-        ? 'CompilationError'
-        : [7, 8, 9, 10, 11, 12].includes(results[0].status.id)
-          ? 'RunTimeError'
-          : shaped.every(r => r.passed) ? 'Completed' : 'Failed';
 
+      // 1. Execute visible test cases
+      const visibleResults = await pollBatch(
+        await sendBatch(buildPayload(source_code, language_id, test_cases))
+      );
+      const shapedVisible = visibleResults.map((r, i) => shapeResult(r, test_cases[i]));
+
+      // 2. Execute hidden test cases (if any)
+      let shapedHidden = [];
+      if (test_cases_hidden?.length) {
+        const hiddenResults = await pollBatch(
+          await sendBatch(buildPayload(source_code, language_id, test_cases_hidden))
+        );
+        shapedHidden = hiddenResults.map((r, i) => shapeResult(r, test_cases_hidden[i]));
+      }
+
+      // 3. Run status derived from visible results only
+      const runStatus = deriveStatus(visibleResults, shapedVisible);
+
+      // 4. Update DB (skip on ghost run)
       if (submission_id) {
         await submission.findByIdAndUpdate(submission_id, {
-          status:       runStatus,
-          runtime_ms:   maxRuntime,
-          memory_kb:    maxMemory,
-          test_results: shaped
+          status:              runStatus,
+          runtime_ms:          Math.max(...visibleResults.map(r => r.time   || 0)),
+          memory_kb:           Math.max(...visibleResults.map(r => r.memory || 0)),
+          test_results:        shapedVisible,  // visible to user on FE
+          test_results_hidden: shapedHidden    // hidden from FE
+          // NOTE: passed_tests and total_tests intentionally NOT set on run
         });
         console.log(`✅ Run saved → submission ${submission_id} [${runStatus}]`);
       } else {
         console.log(`✅ Ghost run complete (no DB update) — job ${job.id}`);
       }
 
-      return { shaped, runStatus, passedCount, total: shaped.length };
+      return {
+        shaped:      shapedVisible,
+        runStatus,
+        passedCount: shapedVisible.filter(r => r.passed).length,
+        total:       shapedVisible.length
+      };
     }
 
-    // ── For a real submit, derive final status from our own shaped results ──
-    // Use raw Judge0 status ids for compile/runtime/TLE (reliable),
-    // but use our own passed flags for Accepted vs Wrong Answer.
-    const hasCE  = results.some(r => r.status.id === 6);
-    const hasRTE = results.some(r => [7, 8, 9, 10, 11, 12].includes(r.status.id));
-    const hasTLE = results.some(r => r.status.id === 5);
+    // ── SUBMIT ─────────────────────────────────────────────────────────────
 
-    const finalStatus = hasCE  ? 'CompilationError'
-                      : hasRTE ? 'RunTimeError'
-                      : hasTLE ? 'Failed'
-                      : passedCount === shaped.length ? 'Completed'
-                      : 'Failed';
+    // Execute ALL test cases (visible + hidden combined)
+    const results = await pollBatch(
+      await sendBatch(buildPayload(source_code, language_id, test_cases))
+    );
+    const shaped      = results.map((r, i) => shapeResult(r, test_cases[i]));
+    const passedCount = shaped.filter(r => r.passed).length;
+    const totalCount  = shaped.length;
+    const finalStatus = deriveStatus(results, shaped);
 
     await submission.findByIdAndUpdate(submission_id, {
-      status:              finalStatus,
-      runtime_ms:          maxRuntime,
-      memory_kb:           maxMemory,
-      test_results_hidden: shaped
+      status:       finalStatus,
+      runtime_ms:   Math.max(...results.map(r => r.time   || 0)),
+      memory_kb:    Math.max(...results.map(r => r.memory || 0)),
+      passed_tests: passedCount,   // ✅ only set on submit
+      total_tests:  totalCount,    // ✅ only set on submit
+      test_results: shaped         // all results in one array
+      // test_results_hidden intentionally NOT updated on submit
     });
 
-    console.log(`✅ Submit ${submission_id}: ${finalStatus} (${passedCount}/${shaped.length})`);
-    return { finalStatus, passedCount, total: shaped.length };
+    console.log(`✅ Submit ${submission_id}: ${finalStatus} (${passedCount}/${totalCount})`);
+    return { finalStatus, passedCount, total: totalCount };
 
   } catch (err) {
     console.error(`❌ Job ${job.id} failed:`, err.response?.data || err.message);
@@ -149,6 +176,8 @@ const worker = new Worker('submission-queue', async job => {
 
 worker.on('completed', (job, result) => {
   console.log(`Job ${job.id} done:`, result);
+  // Socket.io hook:
+  // io.to(job.data.userId).emit(job.data.is_run ? 'run:result' : 'submit:result', result);
 });
 
 worker.on('failed', (job, err) => {
