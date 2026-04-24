@@ -39,9 +39,10 @@ export const aiApi = {
 }
 
 export const submissionApi = {
-  getAll:  (problemId) => api.get('/submission', { params: { problemId } }),
+  getAll:  (problemId) => api.get('/submission',         { params: { problemId } }),
   getById: (id)        => api.get(`/submission/${id}`),
-  submit:  (data)      => api.post('/submission', data),
+  run:     (data)      => api.post('/submission/run',    data),   // POST /submission/run
+  submit:  (data)      => api.post('/submission/submit', data),   // POST /submission/submit
   delete:  (id)        => api.delete(`/submission/${id}`),
 }
 

@@ -60,31 +60,32 @@ function deriveVerdict(s) {
   // If already normalised (re-normalising a normalised object)
   if (s.verdict && s.verdict !== 'Pending') return s.verdict
 
-  // "Completed" means all test results were run — check whether they all passed
-  if (s.status === 'Completed' && Array.isArray(s.test_results) && s.test_results.length > 0) {
-    const allAccepted = s.test_results.every(
-      tr => tr?.status?.description === 'Accepted' || tr?.status?.id === 3
-    )
-    return allAccepted ? 'Accepted' : 'Wrong Answer'
+  // Map directly from the submission-level status set by the worker.
+  // The worker saves test_results[].status as a plain string (e.g. 'Accepted'),
+  // NOT as { id, description } — so never drill into test_results to decide verdict.
+  switch (s.status) {
+    case 'Completed':        return 'Accepted'           // all test cases passed
+    case 'Failed':           return 'Wrong Answer'       // wrong answer or TLE
+    case 'RunTimeError':     return 'Runtime Error'
+    case 'CompilationError': return 'Compilation Error'
+    case 'Pending':          return 'Pending'
+    default:                 return s.status || 'Pending'
   }
-
-  if (s.status === 'Failed') return 'Runtime Error'
-  if (s.status === 'Pending') return 'Pending'
-
-  // Fallback: use the raw status field
-  return s.status || s.verdict || 'Pending'
 }
 
-// ── Count passed / total test cases ───────────────────────────────────────────
+// ── Count passed / total test cases ───────────────────────────────────────────────
 function countTestResults(s) {
-  if (!Array.isArray(s.test_results) || s.test_results.length === 0) {
-    return { passed: s.passed ?? null, total: s.total ?? null }
+  // Prefer the dedicated DB fields the worker sets on submit
+  if (s.passed_tests != null && s.total_tests != null) {
+    return { passed: s.passed_tests, total: s.total_tests }
   }
-  const total  = s.test_results.length
-  const passed = s.test_results.filter(
-    tr => tr?.status?.description === 'Accepted' || tr?.status?.id === 3
-  ).length
-  return { passed, total }
+  // Fallback: count using the boolean `passed` field on each shaped result
+  if (Array.isArray(s.test_results) && s.test_results.length > 0) {
+    const total  = s.test_results.length
+    const passed = s.test_results.filter(tr => tr.passed === true).length
+    return { passed, total }
+  }
+  return { passed: null, total: null }
 }
 
 // ── Normalise a backend submission document → UI shape ─────────────────────────
@@ -136,13 +137,6 @@ function normalizeProblem(p) {
   const sampleTestCases = (visible.length > 0 ? visible : testCases.slice(0, 2)).map(mapTc)
   const hiddenTestCases  = (hidden.length  > 0 ? hidden  : testCases.slice(2)).map(mapTc)
 
-  let constraints = []
-  if (Array.isArray(p.constraints)) {
-    constraints = p.constraints
-  } else if (p.constraints && typeof p.constraints === 'object') {
-    constraints = Object.entries(p.constraints).map(([k, v]) => `${k}: ${v}`)
-  }
-
   return {
     id:             String(p._id || p.id),
     title:          p.title        || 'Untitled',
@@ -150,7 +144,7 @@ function normalizeProblem(p) {
     tags:           p.tags         || [],
     description:    p.description_md || p.description || '',
     examples:       p.examples     || [],
-    constraints,
+    constraints:    [],             // constraints display removed
     sampleTestCases,
     hiddenTestCases,
     starterCode:    (p.starterCode || p.starter_code) ?? generateStarterCode(p),
@@ -594,9 +588,9 @@ export default function ProblemPage() {
 
     if (result.verdict === 'Accepted') {
       dispatch(markProblemSolved({ email: user?.email, problemId: id }))
-      toast.success('🎉 Accepted! Problem solved!', { duration: 4000 })
+      toast.success('🎉 Accepted! All test cases passed!', { duration: 4000 })
     } else {
-      toast.error(`${result.verdict} — ${result.passed}/${result.total} test cases passed`)
+      const detail = (result.passed != null && result.total != null) ? ` — ${result.passed}/${result.total} passed` : ""; toast.error(`${result.verdict}${detail}`)
     }
   }
 

@@ -67,8 +67,17 @@ async function runCode(req, res) {
       await submissionDoc.save();
 
     } else {
-      // Already submitted → ghost run, no DB touch
-      shouldUpdateDB = false;
+      // Already submitted → create a fresh run entry so results can be stored and polled.
+      // Without this, submission_id would be null and the frontend cannot poll for results.
+      submissionDoc = await submission.create({
+        user_id:      req.user.id,
+        problem_id:   value.problem_id || undefined,
+        language_id:  value.language_id,
+        code:         encode(value.code),
+        is_submitted: false,
+        status:       'Pending'
+      });
+      // shouldUpdateDB stays true — this new run doc will be updated by the worker
     }
     // ─────────────────────────────────────────────────────────────────────
 
