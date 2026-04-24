@@ -45,11 +45,21 @@ async function uploadImage(file,userId){
 
 function extractJSON(text) {
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found");
+    // 1. Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+    let cleaned = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+
+    // 2. Try direct parse first
+    try {
+      return JSON.parse(cleaned);
+    } catch (_) { /* fall through */ }
+
+    // 3. Fallback: extract the outermost { ... } block
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON object found in AI response");
 
     return JSON.parse(jsonMatch[0]);
   } catch (err) {
+    console.error("extractJSON failed. Raw AI text:", text?.substring(0, 500));
     throw new Error("Invalid JSON format from AI");
   }
 }

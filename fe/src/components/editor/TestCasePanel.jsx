@@ -156,16 +156,26 @@ export default function TestCasePanel({
   submitResult,
   running,
   submitting,
+  panelHeight,
+  onDragStart,
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const isLoading = running || submitting
   const loadLabel = running ? 'Running your code…' : 'Submitting…'
+  const height = collapsed ? 40 : (panelHeight || 220)
 
   return (
     <div
-      className="flex flex-col border-t border-gray-200 bg-white transition-all flex-shrink-0"
-      style={{ height: collapsed ? '40px' : '220px' }}
+      className="flex flex-col bg-white flex-shrink-0 relative"
+      style={{ height }}
     >
+      {/* Draggable resize handle */}
+      {!collapsed && (
+        <div
+          onMouseDown={onDragStart}
+          className="h-1 flex-shrink-0 bg-gray-200 hover:bg-orange-400 active:bg-orange-500 cursor-row-resize transition-colors z-10"
+        />
+      )}
       {/* Panel header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-1">
@@ -239,16 +249,29 @@ export default function TestCasePanel({
 
           {/* ── Results tab — after Run ───────────────────────────────────── */}
           {!isLoading && activeTab === 'results' && runResults && !submitResult && (() => {
-            const { results, submissionStatus, error } = runResults
+            const { results, submissionStatus, errorOutput, error } = runResults
 
-            // Compilation / runtime error with no results
+            // Compilation / runtime error with error details
             if (submissionStatus === 'CompilationError' || submissionStatus === 'RunTimeError') {
               const label = submissionStatus === 'CompilationError' ? 'Compilation Error' : 'Runtime Error'
               return (
-                <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
-                  <AlertTriangle size={18} className="text-orange-500" />
-                  <span className="text-[13px] font-semibold text-orange-600">{label}</span>
-                  <span className="text-[11px] text-gray-400">Check your code and try again.</span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-center">
+                    <AlertTriangle size={16} className="text-orange-500 flex-shrink-0" />
+                    <span className="text-[13px] font-semibold text-orange-600">{label}</span>
+                  </div>
+                  {errorOutput ? (
+                    <div className="rounded-lg border border-red-200 bg-red-50/50 overflow-hidden">
+                      <div className="px-3 py-1.5 bg-red-100/60 border-b border-red-200">
+                        <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Error Output</span>
+                      </div>
+                      <pre className="p-3 text-[11px] font-mono text-red-700 whitespace-pre-wrap leading-relaxed overflow-x-auto max-h-[140px] overflow-y-auto">
+                        {errorOutput}
+                      </pre>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-gray-400">Check your code and try again.</p>
+                  )}
                 </div>
               )
             }
@@ -283,8 +306,9 @@ export default function TestCasePanel({
 
           {/* ── Results tab — after Submit ────────────────────────────────── */}
           {!isLoading && activeTab === 'results' && submitResult && (() => {
-            const { verdict, firstWrong } = submitResult
+            const { verdict, firstWrong, errorOutput } = submitResult
             const accepted = verdict === 'Accepted'
+            const isError  = verdict === 'Compilation Error' || verdict === 'Runtime Error'
 
             return (
               <div>
@@ -297,7 +321,18 @@ export default function TestCasePanel({
                   </div>
                 )}
 
-                {!accepted && firstWrong && (
+                {isError && errorOutput && (
+                  <div className="rounded-lg border border-red-200 bg-red-50/50 overflow-hidden mb-3">
+                    <div className="px-3 py-1.5 bg-red-100/60 border-b border-red-200">
+                      <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Error Output</span>
+                    </div>
+                    <pre className="p-3 text-[11px] font-mono text-red-700 whitespace-pre-wrap leading-relaxed overflow-x-auto max-h-[140px] overflow-y-auto">
+                      {errorOutput}
+                    </pre>
+                  </div>
+                )}
+
+                {!accepted && !isError && firstWrong && (
                   <div>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">
                       First Failing Case
@@ -316,7 +351,7 @@ export default function TestCasePanel({
                   </div>
                 )}
 
-                {!accepted && !firstWrong && (
+                {!accepted && !isError && !firstWrong && (
                   <div className="text-center py-3">
                     <p className="text-[12px] text-gray-400">No detailed result available.</p>
                   </div>

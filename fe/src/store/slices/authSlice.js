@@ -16,8 +16,8 @@ export const loginUser = createAsyncThunk(
   async ({ email, password }, { rejectWithValue }) => {
     try {
       const { data } = await axios.post(`${API_URL}/user/login`, { email, password })
-      const { token, email: userEmail, profile_pic, name, id } = data.data
-      const user = { email: userEmail, profile_pic, name, id }
+      const { token, email: userEmail, profile_pic, name, id, role } = data.data
+      const user = { email: userEmail, profile_pic, name, id, role }
       saveSession(token, user)
       return { user, token }
     } catch (err) {
@@ -31,8 +31,8 @@ export const signupUser = createAsyncThunk(
   async ({ name, email, password }, { rejectWithValue }) => {
     try {
       const { data } = await axios.post(`${API_URL}/user/signup`, { name, email, password })
-      const { token, email: userEmail, profile_pic, name: userName, id } = data.data
-      const user = { email: userEmail, profile_pic, name: userName, id }
+      const { token, email: userEmail, profile_pic, name: userName, id, role } = data.data
+      const user = { email: userEmail, profile_pic, name: userName, id, role }
       saveSession(token, user)
       return { user, token }
     } catch (err) {
@@ -89,6 +89,7 @@ const authSlice = createSlice({
         profile_pic: payload.profile_pic,
         name:        payload.name || '',
         id:          payload.id   || '',
+        role:        payload.role || 'user',
       }
       state.token           = payload.token
       state.loading         = false

@@ -1,5 +1,6 @@
 const Joi=require('joi');
 const Lesson=require('../models/Lesson');
+const Module=require('../models/Module');
 const { sendSuccessResponse,sendErrorResponse } = require('../utils/response');
 const {STATUS_CODE}=require('../utils/constants')
 
@@ -29,7 +30,12 @@ async function createLesson(req, res) {
             video_urls: value.video_urls,
             order_index: value.order_index,
             xp_reward: value.xp_reward,
+            xp_reward: value.xp_reward,
             problems: value.problems
+        });
+
+        await Module.findByIdAndUpdate(value.module_id, {
+            $push: { lessons: newLesson._id }
         });
 
         return sendSuccessResponse(res, newLesson, "Lesson created successfully", STATUS_CODE.CREATED);

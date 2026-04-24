@@ -3,6 +3,7 @@ import { CheckCircle, ArrowRight } from 'lucide-react'
 import { useAppSelector } from '../../hooks/redux'
 import { selectSolved }   from '../../store/slices/progressSlice'
 import { selectProblems } from '../../store/slices/problemsSlice'
+import { selectAllProblemsFromModules } from '../../store/slices/modulesSlice'
 
 const DIFF_COLOR = {
   Easy:   { text: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
@@ -13,7 +14,10 @@ const DIFF_COLOR = {
 export default function RecentSolved() {
   const nav      = useNavigate()
   const solved   = useAppSelector(selectSolved)
-  const problems = useAppSelector(selectProblems)
+  const sliceProblems  = useAppSelector(selectProblems)
+  const moduleProblems = useAppSelector(selectAllProblemsFromModules)
+  // Use whichever source has data (modules are always loaded, problemsSlice may not be)
+  const problems = sliceProblems.length > 0 ? sliceProblems : moduleProblems
 
   const solvedProblems = problems
     .filter(p => solved.includes(p._id || p.id))

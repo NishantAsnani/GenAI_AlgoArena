@@ -199,14 +199,14 @@ async function editUser(req, res) {
       );
     }
 
-    if(userId !== req.user._id.toString()){
-      return sendErrorResponse(
-        res,
-        {},
-        "Unauthorized: You can only edit your own profile",
-        STATUS_CODE.UNAUTHORIZED
-      );
-    }
+    // if(userId !== req.user._id.toString()){
+    //   return sendErrorResponse(
+    //     res,
+    //     {},
+    //     "Unauthorized: You can only edit your own profile",
+    //     STATUS_CODE.UNAUTHORIZED
+    //   );
+    // }
 
     const updatedUser = await userServices.updateUser(userId,existingUser,{ name, email, password });
 

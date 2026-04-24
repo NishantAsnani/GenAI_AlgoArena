@@ -50,7 +50,7 @@ async function Login(req, res) {
 
     return sendSuccessResponse(
       res,
-      { token, email, name: user.name, id: user._id, profile_pic: user?.avatar_url },
+      { token, email, name: user.name, id: user._id, profile_pic: user?.avatar_url, role: user.role },
       "Logged In Successfully",
       STATUS_CODE.SUCCESS
     );
@@ -107,7 +107,7 @@ async function Signup(req, res) {
 
     return sendSuccessResponse(
       res,
-      { token, email: newUser.email, name: newUser.name, id: newUser._id, profile_pic: newUser?.avatar_url || null },
+      { token, email: newUser.email, name: newUser.name, id: newUser._id, profile_pic: newUser?.avatar_url || null, role: newUser.role },
       "User Created Successfully",
       STATUS_CODE.CREATED
     );
@@ -182,7 +182,7 @@ async function handleGoogleCallback(req, res) {
       );
 
       return res.redirect(
-        `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || "")}&id=${user._id}&profile_pic=${encodeURIComponent(user?.avatar_url || "")}`
+        `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || "")}&id=${user._id}&profile_pic=${encodeURIComponent(user?.avatar_url || "")}&role=${user.role}`
       );
     }
 
@@ -201,7 +201,7 @@ async function handleGoogleCallback(req, res) {
     );
 
     return res.redirect(
-      `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(newUser.email)}&name=${encodeURIComponent(newUser.name || "")}&id=${newUser._id}&profile_pic=${encodeURIComponent(newUser?.avatar_url || "")}`
+      `${frontendUrl}/auth?token=${token}&email=${encodeURIComponent(newUser.email)}&name=${encodeURIComponent(newUser.name || "")}&id=${newUser._id}&profile_pic=${encodeURIComponent(newUser?.avatar_url || "")}&role=${newUser.role}`
     );
 
   } catch (err) {

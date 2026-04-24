@@ -70,7 +70,13 @@ export function useTestRunner() {
         status:   tr.status,
       }))
 
-      setRunResults({ results, submissionStatus: sub.status })
+      // Extract compilation/runtime error message
+      const errorOutput = sub.error_output
+        || rawResults.find(r => r.compile_output)?.compile_output
+        || rawResults.find(r => r.stderr)?.stderr
+        || null
+
+      setRunResults({ results, submissionStatus: sub.status, errorOutput })
     } catch (err) {
       console.error('[useTestRunner] run error:', err)
       setRunResults({ results: [], submissionStatus: 'Failed', error: err.message })
@@ -113,6 +119,12 @@ export function useTestRunner() {
       // Only expose the first wrong test case (hide the rest)
       const firstWrong   = testResults.find(r => !r.passed) ?? null
 
+      // Extract compilation/runtime error message
+      const errorOutput = sub.error_output
+        || testResults.find(r => r.compile_output)?.compile_output
+        || testResults.find(r => r.stderr)?.stderr
+        || null
+
       const result = {
         verdict,
         passed:     passedCount,
@@ -121,6 +133,7 @@ export function useTestRunner() {
         runtime:    sub.runtime_ms != null ? `${sub.runtime_ms}ms` : '—',
         memory:     sub.memory_kb  != null ? `${sub.memory_kb} KB` : '—',
         firstWrong,        // single failing test case or null
+        errorOutput,       // compilation/runtime error message
         isSubmission: true,
       }
 

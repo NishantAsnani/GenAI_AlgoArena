@@ -2,18 +2,29 @@
 import { useEffect }                               from 'react'
 import { BrowserRouter, Routes, Route, Navigate }  from 'react-router-dom'
 import { useAppDispatch, useAppSelector }          from '../hooks/redux'
-import { restoreSession, selectToken, selectSessionRestored } from '../store/slices/authSlice'
+import { restoreSession, selectToken, selectUser, selectSessionRestored } from '../store/slices/authSlice'
 import LandingPage   from '../pages/LandingPage'
 import AuthPage      from '../pages/AuthPage'
 import DashboardPage from '../pages/DashboardPage'
 import ProfilePage   from '../pages/ProfilePage'
 import ProblemPage   from '../pages/ProblemPage'    // ← NEW
+import AdminPage     from '../pages/AdminPage'
 
 function ProtectedRoute({ children }) {
   const token           = useAppSelector(selectToken)
   const sessionRestored = useAppSelector(selectSessionRestored)
   if (!sessionRestored) return null
   return token ? children : <Navigate to="/auth" replace />
+}
+
+function AdminRoute({ children }) {
+  const token           = useAppSelector(selectToken)
+  const user            = useAppSelector(selectUser)
+  const sessionRestored = useAppSelector(selectSessionRestored)
+  if (!sessionRestored) return null
+  if (!token) return <Navigate to="/auth" replace />
+  if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />
+  return children
 }
 
 function GuestRoute({ children }) {
@@ -40,6 +51,7 @@ export default function AppRouter() {
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/profile"   element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/problem/:id" element={<ProtectedRoute><ProblemPage /></ProtectedRoute>} />  {/* ← NEW */}
+        <Route path="/admin"     element={<AdminRoute><AdminPage /></AdminRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,8 +1,8 @@
 // src/components/dashboard/Topbar.jsx
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LogOut, User, ChevronDown } from 'lucide-react'
+import { LogOut, User, ChevronDown, LayoutGrid } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../hooks/redux'
 import { logoutUser, selectUser }         from '../../store/slices/authSlice'
 import { resetProgress }                  from '../../store/slices/progressSlice'
@@ -31,8 +31,11 @@ function Logo() {
 function UserMenu({ user }) {
   const dispatch = useAppDispatch()
   const nav      = useNavigate()
+  const location = useLocation()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+
+  const isAdminPage = location.pathname.startsWith('/admin')
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -100,6 +103,17 @@ function UserMenu({ user }) {
 
             {/* Menu items */}
             <div className="p-1.5">
+              {isAdminPage && (
+                <button
+                  onClick={() => { setOpen(false); nav('/dashboard') }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px]
+                    text-gray-600 hover:bg-gray-50 hover:text-black transition-colors text-left"
+                >
+                  <LayoutGrid size={14} className="text-gray-400" />
+                  User Dashboard
+                </button>
+              )}
+
               <button
                 onClick={() => { setOpen(false); nav('/profile') }}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px]
@@ -108,6 +122,20 @@ function UserMenu({ user }) {
                 <User size={14} className="text-gray-400" />
                 View Profile
               </button>
+
+              {!isAdminPage && user?.role === 'admin' && (
+                <>
+                  <div className="my-1 h-px bg-gray-100" />
+                  <button
+                    onClick={() => { setOpen(false); nav('/admin') }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px]
+                      text-purple-600 hover:bg-purple-50 hover:text-purple-700 transition-colors text-left"
+                  >
+                    <User size={14} className="text-purple-500" />
+                    Admin Dashboard
+                  </button>
+                </>
+              )}
 
               <div className="my-1 h-px bg-gray-100" />
 

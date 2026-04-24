@@ -8,6 +8,8 @@ router.post('/analyze',auth,aiController.analyzeCode);
 
 router.post('/chat',aiController.chatResponse);
 
+router.post('/generate-problem', auth, aiController.generateProblem);
+
 
 
 module.exports=router;

@@ -79,3 +79,45 @@ export function Badge({ children, color = '#f97316', className = '' }) {
     </span>
   )
 }
+
+// ── Confirm Dialog ──────────────────────────────────────────────────────────────
+export function ConfirmDialog({ isOpen, onClose, onConfirm, title = 'Confirm', message = 'Are you sure?', confirmLabel = 'Delete', variant = 'danger' }) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-[scaleIn_0.2s_ease-out]"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 text-center">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center"
+            style={{ background: variant === 'danger' ? '#fef2f2' : '#f0fdf4', border: `2px solid ${variant === 'danger' ? '#fecaca' : '#bbf7d0'}` }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={variant === 'danger' ? '#dc2626' : '#16a34a'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-black mb-1">{title}</h3>
+          <p className="text-sm text-gray-500 leading-relaxed">{message}</p>
+        </div>
+        <div className="flex border-t border-gray-100">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors border-r border-gray-100"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => { onConfirm(); onClose(); }}
+            className={`flex-1 px-4 py-3 text-sm font-bold transition-colors ${
+              variant === 'danger'
+                ? 'text-red-600 hover:bg-red-50'
+                : 'text-green-600 hover:bg-green-50'
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -54,6 +54,7 @@ export default function AuthPage() {
     const profilePic = params.get('profile_pic')
     const name       = params.get('name')
     const id         = params.get('id')
+    const role       = params.get('role')
     const error      = params.get('error')
 
     if (error) {
@@ -69,6 +70,7 @@ export default function AuthPage() {
         profile_pic: decodeURIComponent(profilePic || ''),
         name:        decodeURIComponent(name || ''),
         id:          id || '',
+        role:        role || 'user',
       }))
       toast.success('Signed in with Google!')
       nav('/dashboard')

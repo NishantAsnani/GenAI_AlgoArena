@@ -1,4 +1,5 @@
 const problem=require('../models/Problem');
+const Lesson=require('../models/Lesson');
 const { sendSuccessResponse, sendErrorResponse } = require("../utils/response");
 const { STATUS_CODE } = require("../utils/constants");
 const Joi=require('joi');
@@ -15,7 +16,7 @@ async function addProblem(req,res){
         supported_languages:Joi.array().items(Joi.string()),
         constraints:Joi.object(),
         test_cases:Joi.array().items(Joi.object()),
-        hints:Joi.array().items(Joi.object()),
+        hints:Joi.array().items(Joi.string()),
         solution_meta:Joi.object()
     });
 try{
@@ -26,6 +27,10 @@ try{
     }
 
     const newProblem = await problem.create(value);
+
+    await Lesson.findByIdAndUpdate(value.lesson_id, {
+        $push: { problems: newProblem._id }
+    });
 
     return sendSuccessResponse(
         res,
@@ -123,7 +128,7 @@ async function updateProblem(req,res){
         supported_languages:Joi.array().items(Joi.string()),
         constraints:Joi.object(),
         test_cases:Joi.array().items(Joi.object()),
-        hints:Joi.array().items(Joi.object()),
+        hints:Joi.array().items(Joi.string()),
         solution_meta:Joi.object()
     });
     try{
@@ -136,7 +141,7 @@ async function updateProblem(req,res){
         if(updateError){
             return sendErrorResponse(res, updateError.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
         }
-        const updatedProblem=await problem.findByIdAndUpdate(problemId, updateValue, {new: true});
+        const updatedProblem=await problem.findByIdAndUpdate(problemId, { $set: updateValue }, {new: true, runValidators: true});
         if(!updatedProblem){
             return sendErrorResponse(res, {}, "Problem Not Found", STATUS_CODE.NOT_FOUND);
         }

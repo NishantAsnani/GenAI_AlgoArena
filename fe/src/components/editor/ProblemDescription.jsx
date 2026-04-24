@@ -5,6 +5,7 @@ import { FileText, Clock, Send, Trash2, Eye, ArrowLeft, Activity,
          RotateCcw, Loader2, AlertCircle, CheckCircle,
          Lightbulb, MemoryStick } from 'lucide-react'
 import { aiApi } from '../../api/auth'
+import ReactMarkdown from 'react-markdown'
 
 const DIFF_COLOR = {
   Easy:   { text: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
@@ -17,21 +18,7 @@ const TABS = [
   { id: 'submissions', label: 'Submissions',  icon: Clock    },
 ]
 
-function renderText(text) {
-  if (!text) return null
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
-  return parts.map((p, i) => {
-    if (p.startsWith('**') && p.endsWith('**'))
-      return <strong key={i} className="font-semibold text-black">{p.slice(2, -2)}</strong>
-    if (p.startsWith('`') && p.endsWith('`'))
-      return (
-        <code key={i} className="px-1.5 py-0.5 rounded bg-gray-100 text-orange-600 font-mono text-[12px]">
-          {p.slice(1, -1)}
-        </code>
-      )
-    return p
-  })
-}
+// Removed custom renderText in favor of ReactMarkdown
 
 // ── Delete Confirmation Modal ─────────────────────────────────────────────────
 function DeleteConfirmModal({ submission, onConfirm, onCancel }) {
@@ -118,9 +105,28 @@ function DescriptionTab({ problem }) {
         </div>
       </div>
 
-      <p className="text-[14px] text-gray-700 leading-relaxed">
-        {renderText(problem.description)}
-      </p>
+      <div className="text-[14px] text-gray-700 leading-relaxed markdown-content space-y-4">
+        <ReactMarkdown
+          components={{
+            h1: ({node, ...props}) => <h1 className="text-xl font-bold text-black mt-4 mb-2" {...props} />,
+            h2: ({node, ...props}) => <h2 className="text-lg font-bold text-black mt-4 mb-2" {...props} />,
+            h3: ({node, ...props}) => <h3 className="text-md font-bold text-black mt-3 mb-1" {...props} />,
+            p: ({node, ...props}) => <p className="mb-3" {...props} />,
+            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />,
+            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 space-y-1" {...props} />,
+            li: ({node, ...props}) => <li {...props} />,
+            code: ({node, inline, ...props}) => 
+              inline ? (
+                <code className="px-1.5 py-0.5 rounded bg-gray-100 text-orange-600 font-mono text-[12px]" {...props} />
+              ) : (
+                <pre className="p-3 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto my-3"><code className="text-[12px] font-mono text-gray-800" {...props} /></pre>
+              ),
+            strong: ({node, ...props}) => <strong className="font-semibold text-black" {...props} />
+          }}
+        >
+          {problem.description || problem.description_md}
+        </ReactMarkdown>
+      </div>
 
       {(problem.examples || []).map((ex, i) => (
         <div key={i} className="rounded-xl border border-gray-200 overflow-hidden">
@@ -139,17 +145,57 @@ function DescriptionTab({ problem }) {
         </div>
       ))}
 
-      {(problem.constraints || []).length > 0 && (
-        <div>
-          <h3 className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-2">Constraints</h3>
-          <ul className="space-y-1.5">
-            {problem.constraints.map((c, i) => (
-              <li key={i} className="flex items-start gap-2 text-[13px] text-gray-600 font-mono">
-                <span className="text-orange-400 mt-0.5 flex-shrink-0">•</span>
-                <span>{c}</span>
-              </li>
-            ))}
-          </ul>
+      {/* ── Constraints ─────────────────────────────────────────────── */}
+      {(problem.time_limit_ms || problem.memory_limit_kb || (problem.constraints || []).length > 0) && (
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Constraints</span>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {/* Time & Memory limit badges */}
+            {(problem.time_limit_ms || problem.memory_limit_kb) && (
+              <div className="flex gap-2 flex-wrap">
+                {problem.time_limit_ms && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100">
+                    <Clock size={12} className="text-blue-500 flex-shrink-0" />
+                    <span className="text-[11px] font-semibold text-blue-600">Time Limit</span>
+                    <span className="text-[12px] font-bold text-blue-800 font-mono">
+                      {problem.time_limit_ms >= 1000
+                        ? `${problem.time_limit_ms / 1000}s`
+                        : `${problem.time_limit_ms}ms`}
+                    </span>
+                  </div>
+                )}
+                {problem.memory_limit_kb && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 border border-purple-100">
+                    <MemoryStick size={12} className="text-purple-500 flex-shrink-0" />
+                    <span className="text-[11px] font-semibold text-purple-600">Memory Limit</span>
+                    <span className="text-[12px] font-bold text-purple-800 font-mono">
+                      {problem.memory_limit_kb >= 1024
+                        ? `${Math.round(problem.memory_limit_kb / 1024)} MB`
+                        : `${problem.memory_limit_kb} KB`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Constraint detail bullets */}
+            {(problem.constraints || []).length > 0 && (
+              <ul className="space-y-1.5">
+                {problem.constraints.map((c, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[13px] text-gray-600 font-mono">
+                    <span className="text-orange-400 mt-0.5 flex-shrink-0">•</span>
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
     </div>

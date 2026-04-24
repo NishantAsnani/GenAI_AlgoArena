@@ -66,6 +66,8 @@ function shapeResult(r, tc) {
     input:           tc.input,
     expected_output: expectedOutput,
     actual_output:   actualOutput,
+    compile_output:  decode(r.compile_output) || null,
+    stderr:          decode(r.stderr) || null,
     status:          passed ? 'Accepted' : r.status.description,
     passed,
     runtime_ms:      r.time   ?? null,
@@ -119,12 +121,19 @@ const worker = new Worker('submission-queue', async job => {
 
       // 4. Update DB (skip on ghost run)
       if (submission_id) {
+        const errorOutput = runStatus === 'CompilationError'
+          ? (decode(visibleResults[0]?.compile_output) || decode(visibleResults[0]?.stderr) || null)
+          : runStatus === 'RunTimeError'
+            ? (decode(visibleResults.find(r => r.stderr)?.stderr) || null)
+            : null;
+
         await submission.findByIdAndUpdate(submission_id, {
           status:              runStatus,
           runtime_ms:          Math.max(...visibleResults.map(r => r.time   || 0)),
           memory_kb:           Math.max(...visibleResults.map(r => r.memory || 0)),
           test_results:        shapedVisible,  // visible to user on FE
-          test_results_hidden: shapedHidden    // hidden from FE
+          test_results_hidden: shapedHidden,   // hidden from FE
+          ...(errorOutput && { error_output: errorOutput })
           // NOTE: passed_tests and total_tests intentionally NOT set on run
         });
         console.log(`✅ Run saved → submission ${submission_id} [${runStatus}]`);
@@ -151,13 +160,20 @@ const worker = new Worker('submission-queue', async job => {
     const totalCount  = shaped.length;
     const finalStatus = deriveStatus(results, shaped);
 
+    const errorOutput = finalStatus === 'CompilationError'
+      ? (decode(results[0]?.compile_output) || decode(results[0]?.stderr) || null)
+      : finalStatus === 'RunTimeError'
+        ? (decode(results.find(r => r.stderr)?.stderr) || null)
+        : null;
+
     await submission.findByIdAndUpdate(submission_id, {
       status:       finalStatus,
       runtime_ms:   Math.max(...results.map(r => r.time   || 0)),
       memory_kb:    Math.max(...results.map(r => r.memory || 0)),
       passed_tests: passedCount,   // ✅ only set on submit
       total_tests:  totalCount,    // ✅ only set on submit
-      test_results: shaped         // all results in one array
+      test_results: shaped,        // all results in one array
+      ...(errorOutput && { error_output: errorOutput })
       // test_results_hidden intentionally NOT updated on submit
     });
 

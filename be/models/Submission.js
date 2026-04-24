@@ -11,6 +11,7 @@ const submissionSchema = new mongoose.Schema({
   memory_kb: { type: Number },
   test_results: [{ type: Object }],
   test_results_hidden: [{ type: Object }],
+  error_output: { type: String, default: null },
   is_submitted:{type:Boolean, default:false},
   submitted_at: { type: Date, default: Date.now },
   passed_tests:{type:Number, default:0},

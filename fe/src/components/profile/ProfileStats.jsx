@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useAppSelector } from '../../hooks/redux'
 import { selectSolved, selectSolvedCount, selectPercentage } from '../../store/slices/progressSlice'
 import { selectProblems, selectProblemsCount } from '../../store/slices/problemsSlice'
-import { selectUser } from '../../store/slices/authSlice'
+import { selectAllProblemsFromModules } from '../../store/slices/modulesSlice'
 
 function DonutChart({ easy, medium, hard, total, solved }) {
   const r    = 52
@@ -127,8 +127,10 @@ export default function ProfileStats() {
   const solved      = useAppSelector(selectSolved)
   const solvedCount = useAppSelector(selectSolvedCount)
   const percentage  = useAppSelector(selectPercentage)
-  const problems    = useAppSelector(selectProblems)
-  const total       = useAppSelector(selectProblemsCount)
+  const sliceProblems  = useAppSelector(selectProblems)
+  const moduleProblems = useAppSelector(selectAllProblemsFromModules)
+  const problems = sliceProblems.length > 0 ? sliceProblems : moduleProblems
+  const total    = problems.length
 
   const easy   = problems.filter(p => p.difficulty === 'Easy'   && solved.includes(p._id || p.id)).length
   const medium = problems.filter(p => p.difficulty === 'Medium' && solved.includes(p._id || p.id)).length
@@ -156,10 +158,6 @@ export default function ProfileStats() {
             />
           </div>
         </div>
-      </div>
-
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <Heatmap />
       </div>
     </div>
   )

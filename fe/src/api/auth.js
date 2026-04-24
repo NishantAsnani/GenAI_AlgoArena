@@ -34,15 +34,16 @@ export const moduleApi = {
 }
 
 export const aiApi = {
-  chat:        (prompt)        => api.post('/ai/chat',    { prompt }),
-  analyzeCode: (submissionId) => api.post('/ai/analyze', { submission_id: submissionId }),
+  chat:            (prompt)        => api.post('/ai/chat',    { prompt }),
+  analyzeCode:     (submissionId)  => api.post('/ai/analyze', { submission_id: submissionId }),
+  generateProblem: (data)          => api.post('/ai/generate-problem', data),
 }
 
 export const submissionApi = {
   getAll:  (problemId) => api.get('/submission',         { params: { problemId } }),
   getById: (id)        => api.get(`/submission/${id}`),
-  run:     (data)      => api.post('/submission/run',    data),   // POST /submission/run
-  submit:  (data)      => api.post('/submission/submit', data),   // POST /submission/submit
+  run:     (data)      => api.post('/submission/run',    data),   
+  submit:  (data)      => api.post('/submission/submit', data),   
   delete:  (id)        => api.delete(`/submission/${id}`),
 }
 

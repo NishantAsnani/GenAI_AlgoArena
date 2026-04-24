@@ -126,8 +126,9 @@ function normalizeProblem(p) {
   if (p.sampleTestCases !== undefined && p.description !== undefined) return p
 
   const testCases = Array.isArray(p.test_cases) ? p.test_cases : []
-  const visible   = testCases.filter(tc => !tc.hidden && !tc.is_hidden)
-  const hidden    = testCases.filter(tc =>  tc.hidden ||  tc.is_hidden)
+  // DB schema uses `isHidden` (camelCase)
+  const visible   = testCases.filter(tc => !tc.isHidden && !tc.hidden && !tc.is_hidden)
+  const hidden    = testCases.filter(tc =>  tc.isHidden ||  tc.hidden ||  tc.is_hidden)
 
   const mapTc = (tc) => ({
     input:    String(tc.input ?? ''),
@@ -144,7 +145,9 @@ function normalizeProblem(p) {
     tags:           p.tags         || [],
     description:    p.description_md || p.description || '',
     examples:       p.examples     || [],
-    constraints:    [],             // constraints display removed
+    constraints:    p.constraints?.details || [],
+    time_limit_ms:  p.constraints?.time_limit_ms  ?? null,
+    memory_limit_kb: p.constraints?.memory_limit_kb ?? null,
     sampleTestCases,
     hiddenTestCases,
     starterCode:    (p.starterCode || p.starter_code) ?? generateStarterCode(p),
@@ -159,7 +162,7 @@ function Logo({ onClick }) {
         <span className="font-mono text-white text-[12px]">&gt;_</span>
       </div>
       <span className="font-semibold text-[14px] text-black tracking-tight hidden sm:block">
-        Code<span className="text-orange-500">Arena</span>
+        Algo<span className="text-orange-500">Arena</span>
       </span>
     </button>
   )
@@ -434,6 +437,43 @@ function useDivider(initial = 42) {
   return { pct, containerRef, onMouseDown }
 }
 
+// ── Draggable vertical divider (editor ↔ test-case panel) ─────────────────────
+function useVerticalDivider(initialHeight = 220) {
+  const [height, setHeight] = useState(initialHeight)
+  const dragging            = useRef(false)
+  const rightColRef         = useRef(null)
+
+  const onVMouseDown = useCallback((e) => {
+    e.preventDefault()
+    dragging.current               = true
+    document.body.style.cursor     = 'row-resize'
+    document.body.style.userSelect = 'none'
+  }, [])
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragging.current || !rightColRef.current) return
+      const rect   = rightColRef.current.getBoundingClientRect()
+      const bottom = rect.bottom
+      const newH   = bottom - e.clientY
+      setHeight(Math.min(Math.max(newH, 80), rect.height - 100))
+    }
+    const onUp = () => {
+      dragging.current               = false
+      document.body.style.cursor     = ''
+      document.body.style.userSelect = ''
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup',   onUp)
+    }
+  }, [])
+
+  return { panelHeight: height, rightColRef, onVMouseDown }
+}
+
 // ── ProblemPage ───────────────────────────────────────────────────────────────
 export default function ProblemPage() {
   const { id }   = useParams()
@@ -530,6 +570,7 @@ export default function ProblemPage() {
   const code = cached ?? (problem ? getStarterCode(problem, language) : '')
 
   const { pct, containerRef, onMouseDown } = useDivider(42)
+  const { panelHeight, rightColRef, onVMouseDown } = useVerticalDivider(220)
   const {
     running, submitting, runResults, submitResult, activeTab, run, submit, setActiveTab
   } = useTestRunner()
@@ -749,7 +790,7 @@ export default function ProblemPage() {
         <div onMouseDown={onMouseDown}
           className="w-1 flex-shrink-0 bg-gray-200 hover:bg-orange-400 active:bg-orange-500 cursor-col-resize transition-colors z-10" />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div ref={rightColRef} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <SimpleEditor
               code={code}
@@ -767,6 +808,8 @@ export default function ProblemPage() {
             submitResult={submitResult}
             running={running}
             submitting={submitting}
+            panelHeight={panelHeight}
+            onDragStart={onVMouseDown}
           />
         </div>
       </div>
