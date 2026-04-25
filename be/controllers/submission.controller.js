@@ -7,9 +7,6 @@ const submission=require('../models/submission');
 const Problem=require('../models/Problem');
 const {encode, decode} = require('../utils/helper');
 
-
-
-
 async function runCode(req, res) {
   const schema = Joi.object({
     code:        Joi.string().required(),
@@ -33,7 +30,7 @@ async function runCode(req, res) {
       hiddenTestCases  = problem.test_cases.filter(tc => tc.isHidden === true);
 
     } else if (value.input) {
-      // Playground mode — no problem, just raw input, no expected output
+
       visibleTestCases = [{ input: value.input, expected_output: null }];
     }
 
@@ -47,9 +44,8 @@ async function runCode(req, res) {
       });
     }
 
-
     if (!submissionDoc) {
-      // No entry at all → create a new run entry
+
       submissionDoc = await submission.create({
         user_id:      req.user.id,
         problem_id:   value.problem_id || undefined,
@@ -60,17 +56,24 @@ async function runCode(req, res) {
       });
 
     } else if (!submissionDoc.is_submitted) {
-      // Existing un-submitted entry → patch with latest code
+
       submissionDoc.code        = encode(value.code);
       submissionDoc.language_id = value.language_id;
       submissionDoc.status      = 'Pending';
       await submissionDoc.save();
 
     } else {
-      // Already submitted → ghost run, no DB touch
-      shouldUpdateDB = false;
+
+      submissionDoc = await submission.create({
+        user_id:      req.user.id,
+        problem_id:   value.problem_id || undefined,
+        language_id:  value.language_id,
+        code:         encode(value.code),
+        is_submitted: false,
+        status:       'Pending'
+      });
+
     }
-    // ─────────────────────────────────────────────────────────────────────
 
     const job = await submissionQueue.add('run-code', {
       source_code:       value.code,
@@ -97,8 +100,6 @@ async function runCode(req, res) {
   }
 }
 
-
-// ─── POST /submit ─────────────────────────────────────────────────────────────
 async function addSubmission(req, res) {
   const schema = Joi.object({
     code:        Joi.string().required(),
@@ -110,7 +111,7 @@ async function addSubmission(req, res) {
   if (error) return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
 
   try {
-    // Fetch ALL test cases — visible + hidden
+
     const problem = await Problem.findById(value.problem_id).select('test_cases');
     if (!problem) return sendErrorResponse(res, {}, "Problem not found", STATUS_CODE.NOT_FOUND);
 
@@ -118,27 +119,25 @@ async function addSubmission(req, res) {
 
     let submissionDoc = null;
 
-    // Look for an existing un-submitted entry for this user + problem
     const existingRun = await submission.findOne({
       user_id:      req.user.id,
       problem_id:   value.problem_id,
       is_submitted: false
     });
 
-    // ── DB decision tree ──────────────────────────────────────────────────
     if (existingRun) {
-      // Promote existing run entry to a real submission
+
       existingRun.code                = encode(value.code);
       existingRun.language_id         = value.language_id;
       existingRun.is_submitted        = true;
       existingRun.status              = 'Pending';
       existingRun.submitted_at        = new Date();
-      existingRun.test_results_hidden = [];   // clear stale hidden run results
+      existingRun.test_results_hidden = [];   
       await existingRun.save();
       submissionDoc = existingRun;
 
     } else {
-      // No un-submitted entry OR prior submit already exists → fresh submission
+
       submissionDoc = await submission.create({
         user_id:      req.user.id,
         problem_id:   value.problem_id,
@@ -149,7 +148,6 @@ async function addSubmission(req, res) {
         submitted_at: new Date()
       });
     }
-    // ─────────────────────────────────────────────────────────────────────
 
     const job = await submissionQueue.add('execute-submission', {
       source_code:   value.code,
@@ -172,8 +170,6 @@ async function addSubmission(req, res) {
 }
 
 module.exports = { runCode, addSubmission };
-
-
 
 async function getSubmissions(req, res) {
     try {
@@ -226,10 +222,6 @@ async function deleteSubmission(req, res) {
         return sendErrorResponse(res, {}, `Error deleting submission: ${err.message}`, STATUS_CODE.INTERNAL_SERVER_ERROR);
     }
 }
-
-// async function addBatchSubmissions(req, res) {
-//     const batchSubmissionSchema = Joi.object({
-//         submissions: Joi.array().items(
 
 module.exports = {
     addSubmission,

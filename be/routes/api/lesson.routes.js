@@ -12,6 +12,6 @@ router.post('/',auth,lessonController.createLesson);
 
 router.patch('/:id',auth,lessonController.updateLesson);
 
-
+router.delete('/:id',auth,lessonController.deleteLesson);
 
 module.exports=router;

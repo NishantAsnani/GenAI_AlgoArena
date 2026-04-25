@@ -17,7 +17,7 @@ async function uploadImage(file,userId){
         const { data, error } = await supabaseClient.storage
             .from('ProfilePics')
             .upload(`${userId}/${Date.now()}-${file.originalname}`, file.buffer, {
-                contentType: 'image/png',
+                contentType: file.mimetype,
                 upsert:false
             });
 
@@ -31,13 +31,16 @@ async function uploadImage(file,userId){
         }
 
         else{
+            const publicUrlData = supabaseClient.storage
+                .from('ProfilePics')
+                .getPublicUrl(data.path);
             return{
                 status:'success',
                 message:'File uploaded successfully',
-                data:data,
+                data: publicUrlData.data.publicUrl,
             }
         }
-        
+
     }catch(err){
         throw new Error(err);
     }
@@ -45,11 +48,19 @@ async function uploadImage(file,userId){
 
 function extractJSON(text) {
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found");
+
+    let cleaned = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+
+    try {
+      return JSON.parse(cleaned);
+    } catch (_) {  }
+
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON object found in AI response");
 
     return JSON.parse(jsonMatch[0]);
   } catch (err) {
+    console.error("extractJSON failed. Raw AI text:", text?.substring(0, 500));
     throw new Error("Invalid JSON format from AI");
   }
 }

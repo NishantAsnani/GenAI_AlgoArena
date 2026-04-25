@@ -3,7 +3,7 @@ const  User  = require("../models/users");
 async function fetchUserById(userId) {
   try {
     const user = await User.findById(userId);
-    
+
     return user;
   } catch (err) {
     throw new Error(err);
@@ -16,7 +16,7 @@ async function deleteUser(userId) {
     if (!deletedUser) {
       throw new Error(`User with ID ${userId} not found`);
     }
-    
+
     return deletedUser;
   } catch (err) {
     throw err;
@@ -27,7 +27,7 @@ async function getAllUsers(queryParams){
   try{
     const { page, limit , nameSearch  } = queryParams;
     let whereClause={}
-    const offset = (page - 1) * limit; // Calculate offset for pagination
+    const offset = (page - 1) * limit; 
     if (nameSearch) {
       whereClause.name = {
         $regex: nameSearch,
@@ -35,9 +35,18 @@ async function getAllUsers(queryParams){
       };
     }
 
-    const allUsers=await User.find(whereClause).skip(offset).limit(limit);
+    const allUsers = await User.find(whereClause).skip(offset).limit(limit).lean();
     const totalUsers = await User.countDocuments(whereClause);
     const totalPages = Math.ceil(totalUsers / limit);
+
+    const Progress = require('../models/Progress');
+    const userIds = allUsers.map(u => u._id);
+    const progresses = await Progress.find({ user_id: { $in: userIds } }).lean();
+
+    allUsers.forEach(user => {
+       const userProg = progresses.find(p => p.user_id.toString() === user._id.toString());
+       user.solvedCount = userProg ? (userProg.solved_problems || []).filter(Boolean).length : 0;
+    });
 
     return {
       data: allUsers,
@@ -78,7 +87,6 @@ async function updateUser(userId,oldData,updateFields) {
     throw new Error(error);
   }
 }
-
 
 module.exports = {
   fetchUserById,

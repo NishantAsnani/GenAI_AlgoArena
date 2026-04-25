@@ -4,6 +4,7 @@ const { STATUS_CODE } = require("../utils/constants");
 const userServices = require("../services/user.service");
 const Joi = require('joi');
 const UserProfile = require("../models/UserProfile");
+const { uploadImage } = require("../utils/helper");
 
 async function getAllUsers(req, res) {
   const querySchema = Joi.object({
@@ -34,13 +35,13 @@ async function getAllUsers(req, res) {
       STATUS_CODE.OK
     );
     }
-    
+
   } catch (err) {
     return sendErrorResponse(
       res,
       {},
       `Error Retrieving Users: ${err.message}`,
-      STATUS_CODE.INTERNAL_SERVER_ERROR
+      STATUS_CODE.SERVER_ERROR
     );
   }
 }
@@ -74,13 +75,13 @@ async function getUserById(req, res) {
       "User Retrieved Successfully",
       STATUS_CODE.SUCCESS
     );
-    
+
   } catch (err) {
     return sendErrorResponse(
       res,
       {},
       `Error Retrieving User: ${err.message}`,
-      STATUS_CODE.INTERNAL_SERVER_ERROR
+      STATUS_CODE.SERVER_ERROR
     );
   }
 }
@@ -125,7 +126,7 @@ async function getUserProfile(req, res) {
       res,
       {},
       `Error Retrieving Profile: ${err.message}`,
-      STATUS_CODE.INTERNAL_SERVER_ERROR
+      STATUS_CODE.SERVER_ERROR
     );
   }
 }
@@ -158,7 +159,7 @@ async function deleteUser(req, res) {
       res,
       {},
       `Error Retrieving User: ${err.message}`,
-      STATUS_CODE.INTERNAL_SERVER_ERROR
+      STATUS_CODE.SERVER_ERROR
     );
   }
 }
@@ -199,15 +200,6 @@ async function editUser(req, res) {
       );
     }
 
-    if(userId !== req.user._id.toString()){
-      return sendErrorResponse(
-        res,
-        {},
-        "Unauthorized: You can only edit your own profile",
-        STATUS_CODE.UNAUTHORIZED
-      );
-    }
-
     const updatedUser = await userServices.updateUser(userId,existingUser,{ name, email, password });
 
     if (updatedUser) {
@@ -224,7 +216,7 @@ async function editUser(req, res) {
       res,
       {},
       `Error Updating User: ${err.message}`,
-      STATUS_CODE.INTERNAL_SERVER_ERROR
+      STATUS_CODE.SERVER_ERROR
     );
   }
 }
@@ -252,7 +244,7 @@ async function editUserProfile(req, res) {
 
   try{
       const {error: paramError, value: paramValue} = userIdSchema.validate(req.params);
-    
+
       if(paramError){
           return sendErrorResponse(res, paramError.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
       }
@@ -285,13 +277,47 @@ async function editUserProfile(req, res) {
       }
 
       await userProfile.save();
-    
+
       return sendSuccessResponse(res, userProfile, "User profile updated successfully", STATUS_CODE.OK);
   }catch(err){
       return sendErrorResponse(res, err, "Failed to update user profile");
   }
 }
 
+async function uploadAvatar(req, res) {
+  try {
+    const userId = req.params.id;
+
+    if(userId !== req.user.id.toString()){
+      return sendErrorResponse(res, {}, "Unauthorized: You can only edit your own profile", STATUS_CODE.UNAUTHORIZED);
+    }
+
+    if (!req.file) {
+      return sendErrorResponse(res, {}, "No image file provided", STATUS_CODE.BAD_REQUEST);
+    }
+
+    const uploadResult = await uploadImage(req.file, userId);
+
+    if (uploadResult.status === 'error') {
+      return sendErrorResponse(res, uploadResult, "Failed to upload image to storage", STATUS_CODE.SERVER_ERROR);
+    }
+
+    const publicUrl = uploadResult.data;
+
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return sendErrorResponse(res, {}, "User Not Found", STATUS_CODE.NOT_FOUND);
+    }
+
+    existingUser.avatar_url = publicUrl;
+    await existingUser.save();
+
+    return sendSuccessResponse(res, { avatar_url: publicUrl }, "Profile picture updated successfully", STATUS_CODE.OK);
+
+  } catch (err) {
+    return sendErrorResponse(res, {}, `Error uploading avatar: ${err.message}`, STATUS_CODE.SERVER_ERROR);
+  }
+}
 
 module.exports={
     getAllUsers,
@@ -299,5 +325,6 @@ module.exports={
     getUserProfile,
     deleteUser,
     editUser,
-    editUserProfile
+    editUserProfile,
+    uploadAvatar
 }

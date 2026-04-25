@@ -11,7 +11,6 @@ router.get('/',auth,problemController.getAllProblems);
 router.get('/:id',auth,problemController.getProblemById);
 
 router.patch('/:id',auth,problemController.updateProblem);
-// router.delete('/:id',problemController.deleteProblem);
-
+router.delete('/:id',auth,problemController.deleteProblem);
 
 module.exports=router;

@@ -97,6 +97,48 @@ STRICT RULES:
 - Language of the code does not matter — analyze logic, not syntax`
 
 
+const PROBLEM_GENERATION_PROMPT = `You are an expert competitive programming problem setter with years of experience creating high-quality DSA problems for coding platforms like LeetCode, Codeforces, and HackerRank.
+
+TASK:
+Given a brief problem idea or description from an admin, generate a COMPLETE, well-structured coding problem with test cases. Make it feel like a real, professionally written problem — not AI-generated.
+
+WRITING STYLE:
+- Write the problem description in clear, concise English like a human educator would
+- Use natural language, vary sentence structure, avoid repetitive patterns
+- Include a relatable context or story when appropriate (e.g., "Alice has an array..." or "You are given a grid representing a city map...")
+- Be specific about input/output format
+- Add 2-3 examples with clear explanations
+
+OUTPUT FORMAT — Return ONLY this JSON structure, nothing else:
+{
+  "title": "Problem Title",
+  "description_md": "Full problem description in Markdown. Include:\\n- Problem statement\\n- Input format\\n- Output format\\n- Examples with explanation\\n\\nMake it detailed and clear.",
+  "difficulty": "Easy" or "Medium" or "Hard",
+  "tags": ["tag1", "tag2"],
+  "supported_languages": ["cpp", "java", "python", "js"],
+  "constraints": {
+    "time_limit_ms": 2000,
+    "memory_limit_kb": 128000,
+    "details": ["1 <= N <= 10^5", "1 <= arr[i] <= 10^9"]
+  },
+  "test_cases": [
+    { "input": "exact stdin input", "expected_output": "exact stdout output", "isHidden": false },
+    { "input": "...", "expected_output": "...", "isHidden": false },
+    { "input": "edge case input", "expected_output": "...", "isHidden": true },
+    { "input": "large input scenario", "expected_output": "...", "isHidden": true }
+  ],
+  "hints": ["Hint 1 for students", "Hint 2 if needed"]
+}
+
+RULES:
+- Generate at least 4-6 test cases (2-3 visible, rest hidden)
+- Include edge cases (empty input, single element, max constraints)
+- Test case inputs/outputs must be EXACT strings that a program would read from stdin / write to stdout
+- The difficulty should match the complexity of the problem
+- Output ONLY valid JSON — no prose, no markdown fences
+- Make the description_md rich with examples formatted nicely in markdown
+- Constraints should be realistic for the difficulty level`;
+
 const groq = new Groq({
   apiKey:process.env.GROK_API_KEY,
 });
@@ -277,7 +319,72 @@ async function analyzeCode(req, res) {
   }
 }
 
+
+
+
+async function generateProblem(req, res) {
+  const schema = Joi.object({
+    description: Joi.string().min(10).required(),
+    difficulty: Joi.string().valid('Easy', 'Medium', 'Hard').optional(),
+  });
+
+  try {
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+      return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+    }
+
+    const { description, difficulty } = value;
+
+    const userPrompt = difficulty
+      ? `Generate a ${difficulty} difficulty coding problem based on this idea:\n\n${description}`
+      : `Generate a coding problem based on this idea:\n\n${description}`;
+
+    const grokResponse = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: PROBLEM_GENERATION_PROMPT },
+        { role: "user", content: userPrompt + "\n\nIMPORTANT: Return ONLY raw JSON. No markdown, no code fences, no explanation." },
+      ],
+      max_tokens: 4000,
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    });
+
+    const rawReply = grokResponse.choices[0].message.content;
+
+    if (!rawReply) {
+      return sendErrorResponse(res, {}, "No response from AI", STATUS_CODE.INTERNAL_SERVER_ERROR);
+    }
+
+    let problemData;
+    try {
+      problemData = extractJSON(rawReply);
+    } catch (parseErr) {
+      console.log("Error parsing AI response as JSON:", parseErr);
+      return sendErrorResponse(
+        res,
+        { raw: rawReply },
+        "AI returned malformed JSON. Try again.",
+        STATUS_CODE.INTERNAL_SERVER_ERROR
+      );
+    }
+
+    return sendSuccessResponse(res, problemData, "Problem generated successfully", STATUS_CODE.SUCCESS);
+
+  } catch (err) {
+    console.log(err);
+    return sendErrorResponse(
+      res,
+      {},
+      `Error generating problem: ${err.message}`,
+      STATUS_CODE.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
 module.exports={
     chatResponse,
-    analyzeCode
+    analyzeCode,
+    generateProblem
 }
