@@ -9,11 +9,10 @@ CREATED:201
 }
 
 const LANGUAGE_MAP={
-    1:"Python",
-    2:"Java",
+    75:"Python",
+    65:"Java",
     54:"C++",
-    4:"JavaScript",
-    5:"Go"
+    50:"C",
 }
 
 module.exports={
