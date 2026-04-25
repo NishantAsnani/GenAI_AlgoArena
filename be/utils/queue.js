@@ -1,7 +1,13 @@
 const { Queue } = require('bullmq');
 const IORedis = require('ioredis');
 
-const isDevelopment = process.env.NODE_ENV == 'development';
+const isDevelopment = process.env.NODE_ENV == 'local';
+const express=require('express');
+const app=express();
+
+app.get('/', (req, res) => res.send('Worker is running'));
+app.listen(process.env.PORT || 3001, () => console.log('Server alive'));
+
 
 const connection = isDevelopment
   ? new IORedis(process.env.UPSTASH_REDIS_URL, {  
