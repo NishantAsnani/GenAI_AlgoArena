@@ -3,7 +3,7 @@ const axios=require('axios');
 const { sendErrorResponse, sendSuccessResponse } = require('../utils/response');
 const { STATUS_CODE,LANGUAGE_MAP } = require('../utils/constants');
 const Groq= require('groq-sdk');
-const aiSession=require('../models/AISession');
+const aiSession=require('../models/AiSession');
 const submission=require('../models/Submission');
 const { extractJSON } = require('../utils/helper');
 
