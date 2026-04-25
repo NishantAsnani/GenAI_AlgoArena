@@ -1,7 +1,7 @@
 const { Queue } = require('bullmq');
 const IORedis = require('ioredis');
 
-const isDevelopment = process.env.NODE_ENV == 'local';
+const isDevelopment = process.env.NODE_ENV == 'development';
 const express=require('express');
 const app=express();
 
