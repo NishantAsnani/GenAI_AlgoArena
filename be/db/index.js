@@ -8,10 +8,9 @@ const dbconnection =  async function () {
     console.log(`🔗 Connecting to MongoDB at ${url}...`);
   } catch (err) {
     console.error("❌ Error connecting to MongoDB:", err);
-    throw err; // Rethrow the error to be handled by the caller
+    throw err; 
   }
 };
 
-
 module.exports = dbconnection;
-// This code connects to a MongoDB database using Mongoose.
+

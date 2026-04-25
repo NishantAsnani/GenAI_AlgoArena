@@ -13,6 +13,6 @@ router.post('/',auth,moduleControllers.createModule)
 
 router.patch('/:id',auth,moduleControllers.editModule)
 
-// router.delete('/:id',auth,moduleControllers.deleteModule)
+router.delete('/:id',auth,moduleControllers.deleteModule)
 
 module.exports=router

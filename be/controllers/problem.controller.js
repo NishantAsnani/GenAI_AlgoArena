@@ -5,7 +5,6 @@ const { STATUS_CODE } = require("../utils/constants");
 const Joi=require('joi');
 const { submissionQueue } = require('../utils/queue');
 
-
 async function addProblem(req,res){
     const problemSchema=Joi.object({
         title:Joi.string().required(),
@@ -82,7 +81,6 @@ async function getAllProblems(req,res){
           );
     }
 }
-
 
 async function getProblemById(req,res){
     const idSchema=Joi.object({
@@ -161,10 +159,38 @@ async function updateProblem(req,res){
     }
 }
 
+async function deleteProblem(req, res) {
+    const idSchema = Joi.object({
+        id: Joi.string().hex().required()
+    });
+    try {
+        const { error, value } = idSchema.validate(req.params);
+        if (error) {
+            return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
+        }
+        const problemId = value.id;
+        const deletedProblem = await problem.findByIdAndDelete(problemId);
+
+        if (!deletedProblem) {
+            return sendErrorResponse(res, {}, "Problem Not Found", STATUS_CODE.NOT_FOUND);
+        }
+
+        if (deletedProblem.lesson_id) {
+            await Lesson.findByIdAndUpdate(deletedProblem.lesson_id, {
+                $pull: { problems: problemId }
+            });
+        }
+
+        return sendSuccessResponse(res, {}, "Problem Deleted Successfully", STATUS_CODE.OK);
+    } catch (err) {
+        return sendErrorResponse(res, {}, `Error Deleting Problem: ${err.message}`, STATUS_CODE.INTERNAL_SERVER_ERROR);
+    }
+}
 
 module.exports={
     addProblem,
     getAllProblems,
     getProblemById,
     updateProblem,
+    deleteProblem
 }

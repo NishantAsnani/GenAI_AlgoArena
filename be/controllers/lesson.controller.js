@@ -4,7 +4,6 @@ const Module=require('../models/Module');
 const { sendSuccessResponse,sendErrorResponse } = require('../utils/response');
 const {STATUS_CODE}=require('../utils/constants')
 
-
 async function createLesson(req, res) {
     const lessonSchema = Joi.object({
         module_id: Joi.string().hex().required(),
@@ -59,7 +58,6 @@ async function getAllLessons(req, res) {
         const {page, limit} = value;
         const offset = (page - 1) * limit;
 
-        // FIX: chain .skip() and .limit() — not passed as find() filter object
         const allLessons = await Lesson.find()
             .skip(offset)
             .limit(limit)
@@ -83,7 +81,6 @@ async function getLessonById(req, res) {
             return sendErrorResponse(res, error.details, "Validation error", STATUS_CODE.VALIDATION_ERROR);
         }
 
-        // FIX: use findById() (Mongoose) — not findByPk() (Sequelize)
         const lesson = await Lesson.findById(value.id).populate('problems');
         if (!lesson) {
             return sendErrorResponse(res, {}, "Lesson not found", STATUS_CODE.NOT_FOUND);
@@ -124,9 +121,34 @@ async function updateLesson(req, res) {
     }
 }
 
+async function deleteLesson(req, res) {
+    const { id } = req.params;
+    try {
+        const deletedLesson = await Lesson.findByIdAndDelete(id);
+        if (!deletedLesson) {
+            return sendErrorResponse(res, {}, "Lesson not found", STATUS_CODE.NOT_FOUND);
+        }
+
+        if (deletedLesson.module_id) {
+            await Module.findByIdAndUpdate(deletedLesson.module_id, {
+                $pull: { lessons: id }
+            });
+        }
+
+        const Problem = require('../models/Problem');
+        await Problem.deleteMany({ lesson_id: id });
+
+        return sendSuccessResponse(res, {}, "Lesson deleted successfully", STATUS_CODE.OK);
+    } catch (err) {
+        console.log(err);
+        return sendErrorResponse(res, err, "Failed to delete lesson", STATUS_CODE.INTERNAL_SERVER_ERROR);
+    }
+}
+
 module.exports={
     createLesson,
     getAllLessons,
     getLessonById,
-    updateLesson
+    updateLesson,
+    deleteLesson
 }
