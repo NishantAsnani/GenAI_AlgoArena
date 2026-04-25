@@ -1,10 +1,5 @@
 
 require('dotenv').config();
-
-const express = require('express');
-const app = express();
-app.get('/', (req, res) => res.send('Worker is running'));
-app.listen(process.env.PORT || 3000, () => console.log('Server alive'));
 const { Worker }     = require('bullmq');
 const axios          = require('axios');
 const { connection } = require('../utils/queue');
