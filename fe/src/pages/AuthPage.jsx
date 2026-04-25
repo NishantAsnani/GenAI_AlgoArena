@@ -139,7 +139,7 @@ export default function AuthPage() {
           </div>
         </div>
 
-        <p className="text-xs font-semibold text-black">© 2024 AlgoArena. All rights reserved.</p>
+        <p className="text-xs font-semibold text-black">© 2026 AlgoArena. All rights reserved.</p>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
