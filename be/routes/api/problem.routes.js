@@ -1,11 +1,16 @@
 const express=require('express');
 const router=express.Router();
 const problemController=require('../../controllers/problem.controller');
+const auth=require('../../middleware/auth');
 
 
+router.post('/',auth,problemController.addProblem);
 
-router.post('/add',problemController.addProblem);
-router.get('/',problemController.getAllProblems);
-router.get('/:id',problemController.getProblemById);
-router.put('/:id',problemController.updateProblem);
-router.delete('/:id',problemController.deleteProblem);
+router.get('/',auth,problemController.getAllProblems);
+
+router.get('/:id',auth,problemController.getProblemById);
+
+router.patch('/:id',auth,problemController.updateProblem);
+router.delete('/:id',auth,problemController.deleteProblem);
+
+module.exports=router;

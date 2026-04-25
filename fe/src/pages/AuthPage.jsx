@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Code2, Eye, EyeOff, ArrowLeft, RefreshCw, ArrowRight } from 'lucide-react'
+import { Code2, Eye, EyeOff, ArrowLeft, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import {
-  loginUser, signupUser, verifyOtp, loginWithGoogle,
+  loginUser, signupUser, loginWithGoogle,
   selectAuthLoading, clearError, setGoogleSession,
 } from '../store/slices/authSlice'
 import { Button, Divider, Input } from '../components/ui'
-import OtpInput from '../components/auth/OtpInput'
 
 const slide = {
   initial:    { opacity: 0, x: 20  },
@@ -42,23 +41,20 @@ export default function AuthPage() {
   const dispatch = useAppDispatch()
   const loading  = useAppSelector(selectAuthLoading)
 
-  const [view,         setView]         = useState('login')
-  const [showPass,     setShowPass]     = useState(false)
-  const [loginForm,    setLoginForm]    = useState({ email: '', password: '' })
-  const [signupForm,   setSignupForm]   = useState({ name: '', email: '', password: '' })
-  const [errors,       setErrors]       = useState({})
-  const [otpValue,     setOtpValue]     = useState('')
-  const [otpTimer,     setOtpTimer]     = useState(60)
-  const [otpError,     setOtpError]     = useState('')
-  const [pendingEmail, setPendingEmail] = useState('')
-  const [pendingName,  setPendingName]  = useState('')
-
+  const [view,       setView]       = useState('login')
+  const [showPass,   setShowPass]   = useState(false)
+  const [loginForm,  setLoginForm]  = useState({ email: '', password: '' })
+  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '' })
+  const [errors,     setErrors]     = useState({})
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
+    const params     = new URLSearchParams(window.location.search)
     const token      = params.get('token')
     const email      = params.get('email')
     const profilePic = params.get('profile_pic')
+    const name       = params.get('name')
+    const id         = params.get('id')
+    const role       = params.get('role')
     const error      = params.get('error')
 
     if (error) {
@@ -70,24 +66,20 @@ export default function AuthPage() {
     if (token && email) {
       dispatch(setGoogleSession({
         token,
-        email: decodeURIComponent(email),
+        email:       decodeURIComponent(email),
         profile_pic: decodeURIComponent(profilePic || ''),
+        name:        decodeURIComponent(name || ''),
+        id:          id || '',
+        role:        role || 'user',
       }))
       toast.success('Signed in with Google!')
-      nav('/')
+      nav('/dashboard')
     }
   }, [])
 
-  useEffect(() => {
-    if (view !== 'otp') return
-    setOtpTimer(60)
-    const id = setInterval(() => setOtpTimer(t => t <= 1 ? (clearInterval(id), 0) : t - 1), 1000)
-    return () => clearInterval(id)
-  }, [view])
-
   useEffect(() => { dispatch(clearError()); setErrors({}) }, [view])
 
-  const switchView = (v) => { setErrors({}); setOtpError(''); setShowPass(false); setView(v) }
+  const switchView = (v) => { setErrors({}); setShowPass(false); setView(v) }
 
   const handleLogin = async () => {
     const errs = {}
@@ -95,10 +87,9 @@ export default function AuthPage() {
     if (!loginForm.password) errs.password = 'Password is required'
     if (Object.keys(errs).length) { setErrors(errs); return }
     const res = await dispatch(loginUser(loginForm))
-    if (loginUser.fulfilled.match(res)) { toast.success('Welcome back!'); nav('/') }
+    if (loginUser.fulfilled.match(res)) { toast.success('Welcome back!'); nav('/dashboard') }
     else toast.error(res.payload || 'Login failed')
   }
-
 
   const handleGoogle = async () => {
     const res = await dispatch(loginWithGoogle())
@@ -114,29 +105,14 @@ export default function AuthPage() {
     if (signupForm.password.length < 6) errs.password = 'Minimum 6 characters'
     if (Object.keys(errs).length) { setErrors(errs); return }
     const res = await dispatch(signupUser(signupForm))
-    if (signupUser.fulfilled.match(res)) {
-      setPendingEmail(signupForm.email)
-      setPendingName(signupForm.name)
-      toast.success('OTP sent to your email!')
-      setView('otp')
-    } else toast.error(res.payload || 'Signup failed')
-  }
-
-  const handleVerifyOtp = async () => {
-    setOtpError('')
-    if (otpValue.length < 6) { setOtpError('Enter all 6 digits'); return }
-    const res = await dispatch(verifyOtp({ email: pendingEmail, otp: otpValue, name: pendingName }))
-    if (verifyOtp.fulfilled.match(res)) { toast.success('Account created!'); nav('/') }
-    else setOtpError(res.payload || 'Invalid OTP')
+    if (signupUser.fulfilled.match(res)) { toast.success('Account created!'); nav('/dashboard') }
+    else toast.error(res.payload || 'Signup failed')
   }
 
   return (
     <div className="min-h-screen bg-white flex">
 
-      {/* ── Left Panel ──────────────────────────────────────────────────── */}
       <div className="hidden lg:flex flex-col justify-between w-[400px] flex-shrink-0 bg-orange-50 border-r border-orange-200 p-10">
-
-        {/* Logo */}
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center">
             <Code2 size={18} className="text-white" />
@@ -144,7 +120,6 @@ export default function AuthPage() {
           <span className="font-black text-xl text-black">AlgoArena</span>
         </div>
 
-        {/* Tagline */}
         <div>
           <h2 className="font-black text-4xl text-black leading-tight mb-4">
             Level up your<br />
@@ -167,12 +142,10 @@ export default function AuthPage() {
         <p className="text-xs font-semibold text-black">© 2024 AlgoArena. All rights reserved.</p>
       </div>
 
-      {/* ── Right Panel ─────────────────────────────────────────────────── */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
           <AnimatePresence mode="wait">
 
-            {/* ── LOGIN ─────────────────────────────────────────────── */}
             {view === 'login' && (
               <motion.div key="login" {...slide} className="space-y-6">
                 <div>
@@ -223,7 +196,6 @@ export default function AuthPage() {
               </motion.div>
             )}
 
-            {/* ── SIGNUP ────────────────────────────────────────────── */}
             {view === 'signup' && (
               <motion.div key="signup" {...slide} className="space-y-6">
                 <div className="flex items-center gap-3">
@@ -232,7 +204,7 @@ export default function AuthPage() {
                   </button>
                   <div>
                     <h1 className="font-black text-2xl text-black">Create account</h1>
-                    <p className="text-sm font-medium text-black">We'll send you an OTP to verify</p>
+                    <p className="text-sm font-medium text-black">Join AlgoArena and start solving</p>
                   </div>
                 </div>
 
@@ -272,7 +244,7 @@ export default function AuthPage() {
                 </div>
 
                 <Button variant="primary" onClick={handleSignup} loading={loading} className="w-full glow-orange">
-                  Create Account & Send OTP <ArrowRight size={15} />
+                  Create Account <ArrowRight size={15} />
                 </Button>
 
                 <p className="text-center text-sm font-medium text-black">
@@ -281,45 +253,6 @@ export default function AuthPage() {
                     Sign in
                   </button>
                 </p>
-              </motion.div>
-            )}
-
-            {/* ── OTP ───────────────────────────────────────────────── */}
-            {view === 'otp' && (
-              <motion.div key="otp" {...slide} className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => switchView('signup')} className="text-gray-400 hover:text-black transition-colors">
-                    <ArrowLeft size={18} />
-                  </button>
-                  <div>
-                    <h1 className="font-black text-2xl text-black">Verify email</h1>
-                    <p className="text-sm font-medium text-black">
-                      Code sent to <span className="text-orange-600 font-bold">{pendingEmail}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-6 space-y-4">
-                  <p className="text-center text-sm font-semibold text-black">Enter the 6-digit code</p>
-                  <OtpInput length={6} onChange={setOtpValue} error={otpError} />
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-black">
-                    {otpTimer > 0 ? `Resend in ${otpTimer}s` : "Didn't receive it?"}
-                  </span>
-                  <button
-                    disabled={otpTimer > 0}
-                    onClick={() => { setOtpTimer(60); toast.success('OTP resent!') }}
-                    className="flex items-center gap-1.5 font-bold text-orange-600 hover:text-orange-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <RefreshCw size={13} /> Resend
-                  </button>
-                </div>
-
-                <Button variant="primary" onClick={handleVerifyOtp} loading={loading} className="w-full glow-orange">
-                  Verify & Continue <ArrowRight size={15} />
-                </Button>
               </motion.div>
             )}
 

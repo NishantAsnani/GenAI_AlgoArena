@@ -14,9 +14,20 @@ async function auth(req, res, next) {
     }
 
     const decoded = jwt.verify(token, jwtSecret);
+    if(!decoded){
+      return sendErrorResponse(res,"Invalid token",{},STATUS_CODE.UNAUTHORIZED)
+    }
     req.user = decoded;
     next();
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+    return sendErrorResponse(
+      res,
+      "Token expired",
+      {},
+      STATUS_CODE.UNAUTHORIZED
+    );
+  }
     return sendErrorResponse(res,`Unknown error ${error}`,{},STATUS_CODE.UNAUTHORIZED)
   }
 }
