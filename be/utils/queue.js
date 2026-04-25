@@ -6,7 +6,7 @@ const express=require('express');
 const app=express();
 
 app.get('/', (req, res) => res.send('Worker is running'));
-app.listen(process.env.PORT || 3001, () => console.log('Server alive'));
+app.listen(3001, () => console.log('Server alive'));
 
 
 const connection = isDevelopment
