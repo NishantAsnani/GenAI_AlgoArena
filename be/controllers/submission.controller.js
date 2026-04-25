@@ -3,7 +3,7 @@ const axios=require('axios');
 const { submissionQueue } = require('../utils/queue');
 const { sendErrorResponse, sendSuccessResponse } = require('../utils/response');
 const { STATUS_CODE } = require('../utils/constants');
-const submission=require('../models/submission');
+const submission=require('../models/Submission');
 const Problem=require('../models/Problem');
 const {encode, decode} = require('../utils/helper');
 

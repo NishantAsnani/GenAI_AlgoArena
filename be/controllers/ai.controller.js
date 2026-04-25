@@ -4,7 +4,7 @@ const { sendErrorResponse, sendSuccessResponse } = require('../utils/response');
 const { STATUS_CODE,LANGUAGE_MAP } = require('../utils/constants');
 const Groq= require('groq-sdk');
 const aiSession=require('../models/AISession');
-const submission=require('../models/submission');
+const submission=require('../models/Submission');
 const { extractJSON } = require('../utils/helper');
 
 const DSA_SYSTEM_PROMPT = `You are a friendly and knowledgeable DSA (Data Structures & Algorithms) mentor.

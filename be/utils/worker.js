@@ -3,7 +3,7 @@ require('dotenv').config();
 const { Worker }     = require('bullmq');
 const axios          = require('axios');
 const { connection } = require('../utils/queue');
-const submission     = require('../models/submission');
+const submission     = require('../models/Submission');
 const Progress       = require('../models/Progress');
 const Problem        = require('../models/Problem');
 const Lesson         = require('../models/Lesson');
