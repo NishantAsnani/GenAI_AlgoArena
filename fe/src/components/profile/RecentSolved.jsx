@@ -1,8 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle, ArrowRight } from 'lucide-react'
 import { useAppSelector } from '../../hooks/redux'
-import { selectSolved }   from '../../store/slices/progressSlice'
-import { selectProblems } from '../../store/slices/problemsSlice'
 import { selectAllProblemsFromModules } from '../../store/slices/modulesSlice'
 
 const DIFF_COLOR = {
@@ -13,14 +11,10 @@ const DIFF_COLOR = {
 
 export default function RecentSolved() {
   const nav      = useNavigate()
-  const solved   = useAppSelector(selectSolved)
-  const sliceProblems  = useAppSelector(selectProblems)
-  const moduleProblems = useAppSelector(selectAllProblemsFromModules)
-  // Use whichever source has data (modules are always loaded, problemsSlice may not be)
-  const problems = sliceProblems.length > 0 ? sliceProblems : moduleProblems
+  const problems = useAppSelector(selectAllProblemsFromModules)
 
   const solvedProblems = problems
-    .filter(p => solved.includes(p._id || p.id))
+    .filter(p => p.isSolved === true)
     .slice(-5)
     .reverse()
 

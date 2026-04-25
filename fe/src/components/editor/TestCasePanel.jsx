@@ -1,12 +1,11 @@
-// src/components/editor/TestCasePanel.jsx
-// Bottom panel — Test Cases tab + Results tab
+
+
 import { useState } from 'react'
 import {
   ChevronDown, ChevronUp, CheckCircle, XCircle,
   Loader2, Clock, Cpu, AlertTriangle,
 } from 'lucide-react'
 
-// ── Status colour map ─────────────────────────────────────────────────────────
 const STATUS_STYLES = {
   Accepted:           { border: '#bbf7d0', header: '#f0fdf4', hover: '#dcfce7', icon: 'green',  label: '#16a34a' },
   'Wrong Answer':     { border: '#fecaca', header: '#fef2f2', hover: '#fee2e2', icon: 'red',    label: '#dc2626' },
@@ -15,7 +14,6 @@ const STATUS_STYLES = {
   Failed:             { border: '#fecaca', header: '#fef2f2', hover: '#fee2e2', icon: 'red',    label: '#dc2626' },
 }
 
-// ── Single test-case result card ──────────────────────────────────────────────
 function ResultRow({ result, label, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
   const s = result.passed
@@ -88,7 +86,6 @@ function ResultRow({ result, label, defaultOpen = false }) {
   )
 }
 
-// ── Verdict banner after submit ───────────────────────────────────────────────
 function VerdictBanner({ result }) {
   const accepted = result.verdict === 'Accepted'
   const isError  = result.verdict === 'Compilation Error' || result.verdict === 'Runtime Error'
@@ -137,7 +134,6 @@ function VerdictBanner({ result }) {
   )
 }
 
-// ── Loading state ─────────────────────────────────────────────────────────────
 function LoadingState({ label }) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2">
@@ -147,7 +143,6 @@ function LoadingState({ label }) {
   )
 }
 
-// ── TestCasePanel ─────────────────────────────────────────────────────────────
 export default function TestCasePanel({
   problem,
   activeTab,
@@ -169,14 +164,14 @@ export default function TestCasePanel({
       className="flex flex-col bg-white flex-shrink-0 relative"
       style={{ height }}
     >
-      {/* Draggable resize handle */}
+      {}
       {!collapsed && (
         <div
           onMouseDown={onDragStart}
           className="h-1 flex-shrink-0 bg-gray-200 hover:bg-orange-400 active:bg-orange-500 cursor-row-resize transition-colors z-10"
         />
       )}
-      {/* Panel header */}
+      {}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-1">
           {['testcases', 'results'].map(tab => (
@@ -208,14 +203,14 @@ export default function TestCasePanel({
         </button>
       </div>
 
-      {/* Content */}
+      {}
       {!collapsed && (
         <div className="flex-1 overflow-y-auto p-3">
 
-          {/* ── Loading ──────────────────────────────────────────────────── */}
+          {}
           {isLoading && <LoadingState label={loadLabel} />}
 
-          {/* ── Test Cases tab ────────────────────────────────────────────── */}
+          {}
           {!isLoading && activeTab === 'testcases' && (
             <div>
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">
@@ -247,11 +242,10 @@ export default function TestCasePanel({
             </div>
           )}
 
-          {/* ── Results tab — after Run ───────────────────────────────────── */}
+          {}
           {!isLoading && activeTab === 'results' && runResults && !submitResult && (() => {
             const { results, submissionStatus, errorOutput, error } = runResults
 
-            // Compilation / runtime error with error details
             if (submissionStatus === 'CompilationError' || submissionStatus === 'RunTimeError') {
               const label = submissionStatus === 'CompilationError' ? 'Compilation Error' : 'Runtime Error'
               return (
@@ -304,7 +298,7 @@ export default function TestCasePanel({
             )
           })()}
 
-          {/* ── Results tab — after Submit ────────────────────────────────── */}
+          {}
           {!isLoading && activeTab === 'results' && submitResult && (() => {
             const { verdict, firstWrong, errorOutput } = submitResult
             const accepted = verdict === 'Accepted'
@@ -360,7 +354,7 @@ export default function TestCasePanel({
             )
           })()}
 
-          {/* ── Empty state ───────────────────────────────────────────────── */}
+          {}
           {!isLoading && activeTab === 'results' && !runResults && !submitResult && (
             <div className="flex items-center justify-center h-full">
               <p className="text-[12px] text-gray-400">Run or Submit to see results</p>

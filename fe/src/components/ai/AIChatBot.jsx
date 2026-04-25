@@ -1,18 +1,13 @@
-// src/components/ai/AIChatBot.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Floating AI Chatbot — connected to POST /api/ai/chat
-//   Body:     { prompt: string }
-//   Response: { success, message, data: string }
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, X, Send, Loader2, Bot, User,
   Minimize2, Maximize2, RotateCcw,
 } from 'lucide-react'
-import { aiApi } from '../../api/auth' // adjust this import path to match your project
+import { aiApi } from '../../api/auth' 
 
-// ── Minimal markdown: bold + inline code ─────────────────────────────────────
 function renderMsg(text) {
   if (!text || typeof text !== 'string') return null
   const lines = text.split('\n')
@@ -156,13 +151,13 @@ export default function AIChatBot({ problem, code, language }) {
   const clearChat = () => {
     setMessages([{
       role:    'assistant',
-      content: `Chat cleared. Ask me anything about **${problem?.title || 'this problem'}**!`,
+      content: `Chat cleared. Ask me anything about DSA realated questions . \n I am  here to help you out.`,
     }])
   }
 
   return (
     <>
-      {/* ── Floating FAB ──────────────────────────────────────────────────── */}
+      {}
       <AnimatePresence>
         {!open && (
           <motion.button
@@ -179,13 +174,11 @@ export default function AIChatBot({ problem, code, language }) {
             title="AI Assistant"
           >
             <Sparkles size={18} />
-            {/* pulse ring */}
-            <span className="absolute inset-0 rounded-2xl border-2 border-black/20 animate-ping" />
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* ── Chat panel ────────────────────────────────────────────────────── */}
+      {}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -201,7 +194,7 @@ export default function AIChatBot({ problem, code, language }) {
               height: minimized ? 'auto' : 520,
             }}
           >
-            {/* Header */}
+            {}
             <div className="flex items-center gap-2.5 px-4 py-3
               border-b border-gray-100 bg-gray-50 flex-shrink-0">
               <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
@@ -238,14 +231,14 @@ export default function AIChatBot({ problem, code, language }) {
 
             {!minimized && (
               <>
-                {/* Messages */}
+                {}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                   {messages.map((msg, i) => <Bubble key={i} msg={msg} />)}
                   {loading && <TypingDots />}
                   <div ref={bottomRef} />
                 </div>
 
-                {/* Input row */}
+                {}
                 <div className="flex items-end gap-2 px-3 pb-3 pt-2
                   border-t border-gray-100 flex-shrink-0">
                   <textarea

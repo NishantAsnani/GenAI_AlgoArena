@@ -5,7 +5,6 @@ import { LayoutDashboard, User, Settings } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { selectUser }          from '../store/slices/authSlice'
 import { loadUserProfile }     from '../store/slices/profileSlice'
-import { loadUserProgress }    from '../store/slices/progressSlice'
 import { fetchModules }        from '../store/slices/modulesSlice'
 import ProfileCard             from '../components/profile/ProfileCard'
 import ProfileStats            from '../components/profile/ProfileStats'
@@ -72,7 +71,6 @@ export default function ProfilePage() {
     if (user?.id) {
       dispatch(loadUserProfile())
       dispatch(fetchModules())
-      if (user?.email) dispatch(loadUserProgress(user.email))
     }
   }, [user?.id, dispatch])
 

@@ -72,6 +72,35 @@ export const logoutUser = createAsyncThunk('auth/logout', async () => {
   clearSession()
 })
 
+export const updateAvatar = createAsyncThunk(
+  'auth/updateAvatar',
+  async ({ userId, file }, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const token = state.auth.token;
+
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const { data } = await axios.post(`${API_URL}/user/profile/${userId}/avatar`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const newAvatarUrl = data.data.avatar_url;
+
+      const user = { ...state.auth.user, profile_pic: newAvatarUrl };
+      saveSession(token, user);
+
+      return newAvatarUrl;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message)
+    }
+  }
+)
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
@@ -130,6 +159,12 @@ const authSlice = createSlice({
 
     builder.addCase(logoutUser.fulfilled, (s) => {
       s.user = null; s.token = null; s.loading = false; s.error = null; s.sessionRestored = true
+    })
+
+    builder.addCase(updateAvatar.fulfilled, (s, { payload }) => {
+      if (s.user) {
+        s.user.profile_pic = payload;
+      }
     })
   },
 })

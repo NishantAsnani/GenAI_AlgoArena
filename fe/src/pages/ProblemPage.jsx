@@ -1,9 +1,5 @@
-// src/pages/ProblemPage.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Module: editor
-// Split layout: problem description (left) + Monaco editor (right)
-// + slide-in navigation drawer for Modules → Lessons → Problems
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate }   from 'react-router-dom'
 import { motion, AnimatePresence }  from 'framer-motion'
@@ -19,8 +15,6 @@ import {
   setCode, setLanguage, resetResults,
   selectCode, selectLanguage,
 } from '../store/slices/editorSlice'
-import { markProblemSolved }        from '../store/slices/progressSlice'
-import { selectSolved }             from '../store/slices/progressSlice'
 import {
   selectAllProblemsFromModules,
   selectModules,
@@ -37,35 +31,28 @@ import TestCasePanel                from '../components/editor/TestCasePanel'
 import toast from 'react-hot-toast'
 import AIChatBot from '../components/ai/AIChatBot'
 
-// ── Language id → display name (Judge0 IDs) ───────────────────────────────────
 const LANG_NAMES = {
   50: 'C', 52: 'C', 54: 'C++', 62: 'Java', 63: 'JavaScript',
   71: 'Python 3', 72: 'Ruby', 73: 'Rust', 74: 'TypeScript', 75: 'Go',
 }
 
-// ── Safely decode a base64 string (returns original string on failure) ─────────
 function safeBase64Decode(str) {
   if (!str) return ''
   try {
-    // atob works in browsers; in Node use Buffer.from(str, 'base64').toString()
+
     return atob(str)
   } catch {
     return str
   }
 }
 
-// ── Derive the human-readable verdict from a DB submission document ────────────
-// DB shape: { status: "Completed"|"Pending"|"Failed", test_results: [{ status: { description } }] }
 function deriveVerdict(s) {
-  // If already normalised (re-normalising a normalised object)
+
   if (s.verdict && s.verdict !== 'Pending') return s.verdict
 
-  // Map directly from the submission-level status set by the worker.
-  // The worker saves test_results[].status as a plain string (e.g. 'Accepted'),
-  // NOT as { id, description } — so never drill into test_results to decide verdict.
   switch (s.status) {
-    case 'Completed':        return 'Accepted'           // all test cases passed
-    case 'Failed':           return 'Wrong Answer'       // wrong answer or TLE
+    case 'Completed':        return 'Accepted'           
+    case 'Failed':           return 'Wrong Answer'       
     case 'RunTimeError':     return 'Runtime Error'
     case 'CompilationError': return 'Compilation Error'
     case 'Pending':          return 'Pending'
@@ -73,13 +60,12 @@ function deriveVerdict(s) {
   }
 }
 
-// ── Count passed / total test cases ───────────────────────────────────────────────
 function countTestResults(s) {
-  // Prefer the dedicated DB fields the worker sets on submit
+
   if (s.passed_tests != null && s.total_tests != null) {
     return { passed: s.passed_tests, total: s.total_tests }
   }
-  // Fallback: count using the boolean `passed` field on each shaped result
+
   if (Array.isArray(s.test_results) && s.test_results.length > 0) {
     const total  = s.test_results.length
     const passed = s.test_results.filter(tr => tr.passed === true).length
@@ -88,16 +74,13 @@ function countTestResults(s) {
   return { passed: null, total: null }
 }
 
-// ── Normalise a backend submission document → UI shape ─────────────────────────
 function normalizeSubmission(s) {
   const verdict = deriveVerdict(s)
   const { passed, total } = countTestResults(s)
 
-  // Decode base64 code — the DB stores Judge0-encoded source
   const rawCode = s.code || ''
   const code    = safeBase64Decode(rawCode)
 
-  // Date: DB uses submitted_at (not createdAt)
   const dateSource = s.submitted_at || s.createdAt || s.created_at
   const date = dateSource
     ? new Date(dateSource).toLocaleDateString('en-US', {
@@ -112,7 +95,7 @@ function normalizeSubmission(s) {
     language: LANG_NAMES[s.language_id] || `Lang ${s.language_id}`,
     code,
     date,
-    // DB uses runtime_ms / memory_kb
+
     runtime:  s.runtime_ms  ?? s.runtime  ?? null,
     memory:   s.memory_kb   ?? s.memory   ?? null,
     passed,
@@ -120,13 +103,12 @@ function normalizeSubmission(s) {
   }
 }
 
-// ── Normalize a backend (MongoDB) problem → frontend shape ────────────────────
 function normalizeProblem(p) {
   if (!p) return null
   if (p.sampleTestCases !== undefined && p.description !== undefined) return p
 
   const testCases = Array.isArray(p.test_cases) ? p.test_cases : []
-  // DB schema uses `isHidden` (camelCase)
+
   const visible   = testCases.filter(tc => !tc.isHidden && !tc.hidden && !tc.is_hidden)
   const hidden    = testCases.filter(tc =>  tc.isHidden ||  tc.hidden ||  tc.is_hidden)
 
@@ -154,7 +136,6 @@ function normalizeProblem(p) {
   }
 }
 
-// ── Logo ──────────────────────────────────────────────────────────────────────
 function Logo({ onClick }) {
   return (
     <button onClick={onClick} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -168,7 +149,6 @@ function Logo({ onClick }) {
   )
 }
 
-// ── Difficulty badge ──────────────────────────────────────────────────────────
 const DIFF = {
   Easy:   { text: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
   Medium: { text: '#d97706', bg: '#fffbeb', border: '#fde68a' },
@@ -187,7 +167,6 @@ function DiffBadge({ d }) {
   )
 }
 
-// ── Navigation drawer ─────────────────────────────────────────────────────────
 function NavProblemRow({ problem, isSolved, onNavigate }) {
   const id = problem._id || problem.id
   return (
@@ -213,10 +192,10 @@ function NavProblemRow({ problem, isSolved, onNavigate }) {
   )
 }
 
-function NavLessonFolder({ lesson, solved, onNavigate, currentId }) {
+function NavLessonFolder({ lesson, onNavigate, currentId }) {
   const [open, setOpen] = useState(true)
   const problems   = lesson.problems || []
-  const solvedCount = problems.filter(p => solved.includes(p._id || p.id)).length
+  const solvedCount = problems.filter(p => p.isSolved === true).length
   const hasActive   = problems.some(p => String(p._id || p.id) === String(currentId))
 
   useEffect(() => { if (hasActive) setOpen(true) }, [hasActive])
@@ -256,7 +235,7 @@ function NavLessonFolder({ lesson, solved, onNavigate, currentId }) {
               >
                 <NavProblemRow
                   problem={p}
-                  isSolved={solved.includes(p._id || p.id)}
+                  isSolved={p.isSolved === true}
                   onNavigate={onNavigate}
                 />
               </div>
@@ -268,10 +247,10 @@ function NavLessonFolder({ lesson, solved, onNavigate, currentId }) {
   )
 }
 
-function NavModuleFolder({ module, solved, onNavigate, currentId }) {
+function NavModuleFolder({ module, onNavigate, currentId }) {
   const lessons     = module.lessons || []
   const allProblems = lessons.flatMap(l => l.problems || [])
-  const solvedCount = allProblems.filter(p => solved.includes(p._id || p.id)).length
+  const solvedCount = allProblems.filter(p => p.isSolved === true).length
   const total       = allProblems.length
   const pct         = total ? Math.round((solvedCount / total) * 100) : 0
   const hasActive   = allProblems.some(p => String(p._id || p.id) === String(currentId))
@@ -316,7 +295,6 @@ function NavModuleFolder({ module, solved, onNavigate, currentId }) {
                 <NavLessonFolder
                   key={lesson._id || lesson.id}
                   lesson={lesson}
-                  solved={solved}
                   onNavigate={onNavigate}
                   currentId={currentId}
                 />
@@ -331,7 +309,6 @@ function NavModuleFolder({ module, solved, onNavigate, currentId }) {
 
 function NavigationDrawer({ open, onClose, currentId, onNavigate }) {
   const modules        = useAppSelector(selectModules)
-  const solved         = useAppSelector(selectSolved)
   const modulesLoading = useAppSelector(selectModulesLoading)
 
   return (
@@ -387,7 +364,6 @@ function NavigationDrawer({ open, onClose, currentId, onNavigate }) {
                   <NavModuleFolder
                     key={mod._id || mod.id}
                     module={mod}
-                    solved={solved}
                     onNavigate={(problemId) => { onNavigate(problemId); onClose() }}
                     currentId={currentId}
                   />
@@ -401,7 +377,6 @@ function NavigationDrawer({ open, onClose, currentId, onNavigate }) {
   )
 }
 
-// ── Draggable divider ─────────────────────────────────────────────────────────
 function useDivider(initial = 42) {
   const [pct,  setPct]  = useState(initial)
   const dragging        = useRef(false)
@@ -437,7 +412,6 @@ function useDivider(initial = 42) {
   return { pct, containerRef, onMouseDown }
 }
 
-// ── Draggable vertical divider (editor ↔ test-case panel) ─────────────────────
 function useVerticalDivider(initialHeight = 220) {
   const [height, setHeight] = useState(initialHeight)
   const dragging            = useRef(false)
@@ -474,7 +448,6 @@ function useVerticalDivider(initialHeight = 220) {
   return { panelHeight: height, rightColRef, onVMouseDown }
 }
 
-// ── ProblemPage ───────────────────────────────────────────────────────────────
 export default function ProblemPage() {
   const { id }   = useParams()
   const nav      = useNavigate()
@@ -490,7 +463,6 @@ export default function ProblemPage() {
 
   useEffect(() => { dispatch(fetchModules()) }, [dispatch])
 
-  // ── Resolve the problem (static → store → API) ────────────────────────────
   useEffect(() => {
     let cancelled = false
     setPageState('loading')
@@ -537,7 +509,7 @@ export default function ProblemPage() {
 
     resolve()
     return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [id])
 
   useEffect(() => {
@@ -552,12 +524,11 @@ export default function ProblemPage() {
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [storeProblems])
 
   const currentIndex = allProblems.findIndex(p => String(p._id || p.id) === String(id))
 
-  // ── Language / code ────────────────────────────────────────────────────────
   const language = useAppSelector(selectLanguage(id))
   const cached   = useAppSelector(selectCode(id, language))
 
@@ -572,10 +543,9 @@ export default function ProblemPage() {
   const { pct, containerRef, onMouseDown } = useDivider(42)
   const { panelHeight, rightColRef, onVMouseDown } = useVerticalDivider(220)
   const {
-    running, submitting, runResults, submitResult, activeTab, run, submit, setActiveTab
+    running, submitting, runResults, submitResult, activeTab, run, submit, setActiveTab, reset: resetTestRunner
   } = useTestRunner()
 
-  // ── Submissions: fetched from backend ─────────────────────────────────────
   const [submissions,        setSubmissions]        = useState([])
   const [submissionsLoading, setSubmissionsLoading] = useState(false)
 
@@ -584,7 +554,7 @@ export default function ProblemPage() {
     setSubmissionsLoading(true)
     try {
       const res  = await submissionApi.getAll(problemId)
-      // Support both { data: { data: [] } } and { data: [] } response shapes
+
       const raw  = res?.data?.data ?? res?.data ?? []
       const list = Array.isArray(raw) ? raw : []
       setSubmissions(list.map(normalizeSubmission))
@@ -596,14 +566,15 @@ export default function ProblemPage() {
     }
   }, [user])
 
-  // Fetch whenever problem changes
   useEffect(() => {
     if (pageState === 'found' && id) fetchSubmissions(id)
   }, [id, pageState, fetchSubmissions])
 
-  useEffect(() => { dispatch(resetResults()) }, [id, dispatch])
+  useEffect(() => { 
+    dispatch(resetResults()) 
+    resetTestRunner()
+  }, [id, dispatch])
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCodeChange = (val) => {
     dispatch(setCode({ problemId: id, language, code: val }))
   }
@@ -624,11 +595,11 @@ export default function ProblemPage() {
     const result = await submit(code, language, problem)
     if (!result) return
 
-    // Refresh the submissions list from backend now that the job is done
     await fetchSubmissions(id)
 
     if (result.verdict === 'Accepted') {
-      dispatch(markProblemSolved({ email: user?.email, problemId: id }))
+
+      dispatch(fetchModules())
       toast.success('🎉 Accepted! All test cases passed!', { duration: 4000 })
     } else {
       const detail = (result.passed != null && result.total != null) ? ` — ${result.passed}/${result.total} passed` : ""; toast.error(`${result.verdict}${detail}`)
@@ -638,7 +609,7 @@ export default function ProblemPage() {
   const handleDeleteSub = async (subId) => {
     try {
       await submissionApi.delete(subId)
-      // Optimistically remove from local state, no need for a full refetch
+
       setSubmissions(prev => prev.filter(s => s.id !== subId))
     } catch (err) {
       const msg = err?.response?.data?.message || 'Could not delete submission.'
@@ -661,7 +632,6 @@ export default function ProblemPage() {
 
   const dc = { Easy: '#16a34a', Medium: '#d97706', Hard: '#dc2626' }
 
-  // ── Loading ────────────────────────────────────────────────────────────────
   if (pageState === 'loading') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -692,7 +662,7 @@ export default function ProblemPage() {
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
 
-      {/* ── Navigation Drawer ────────────────────────────────────────────── */}
+      {}
       <NavigationDrawer
         open={showNav}
         onClose={() => setShowNav(false)}
@@ -700,7 +670,7 @@ export default function ProblemPage() {
         onNavigate={(problemId) => nav(`/problem/${problemId}`)}
       />
 
-      {/* ── Topbar ──────────────────────────────────────────────────────── */}
+      {}
       <header className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0 z-30">
 
         <Logo onClick={() => nav('/dashboard')} />
@@ -775,7 +745,7 @@ export default function ProblemPage() {
         </div>
       </header>
 
-      {/* ── Split layout ─────────────────────────────────────────────────── */}
+      {}
       <div ref={containerRef} className="flex-1 flex overflow-hidden">
 
         <div className="flex-shrink-0 overflow-hidden border-r border-gray-200" style={{ width: `${pct}%` }}>
@@ -814,7 +784,7 @@ export default function ProblemPage() {
         </div>
       </div>
 
-      {/* ── AI Chatbot ─────────────────────────────────────────────────── */}
+      {}
       <AIChatBot
         problem={problem}
         code={code}

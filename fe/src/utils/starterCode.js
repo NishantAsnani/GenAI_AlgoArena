@@ -1,8 +1,4 @@
-// src/utils/starterCode.js
-// ─────────────────────────────────────────────────────────────────────────────
-// Common starter code templates for each language (HackerRank style)
-// Same boilerplate for every problem — user fills in the logic
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 const STARTER_TEMPLATES = {
   'C++': `#include <cmath>
@@ -14,7 +10,7 @@ using namespace std;
 
 int main() {
     /* Enter your code here. Read input from STDIN. Print output to STDOUT */
-    
+
     return 0;
 }
 `,
@@ -29,7 +25,7 @@ int main() {
 
 int main() {
     /* Enter your code here. Read input from STDIN. Print output to STDOUT */
-    
+
     return 0;
 }
 `,
@@ -45,7 +41,7 @@ public class Solution {
     public static void main(String[] args) {
         /* Enter your code here. Read input from STDIN. Print output to STDOUT */
         Scanner sc = new Scanner(System.in);
-        
+
     }
 }
 `,
@@ -66,29 +62,15 @@ if __name__ == '__main__':
 `,
 }
 
-/**
- * Get the common starter code for a language.
- * Falls back to problem-specific starterCode if it exists (for static problems).
- *
- * @param {object} problem   - The problem object
- * @param {string} language  - One of 'C', 'C++', 'Java', 'Python'
- * @returns {string}
- */
 export function getStarterCode(problem, language) {
-  // Use problem-specific starter code only if explicitly set (static PROBLEMS array)
+
   if (problem?.starterCode?.[language]) {
     return problem.starterCode[language]
   }
-  // Otherwise use the common template
+
   return STARTER_TEMPLATES[language] ?? ''
 }
 
-/**
- * Get all language templates as an object (used by SimpleEditor reset button).
- *
- * @param {object} problem
- * @returns {{ C: string, 'C++': string, Java: string, Python: string }}
- */
 export function generateStarterCode(problem) {
   return {
     C:      getStarterCode(problem, 'C'),

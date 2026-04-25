@@ -1,11 +1,10 @@
-// src/hooks/useTestRunner.js
+
 import { useState } from 'react'
 import { submissionApi } from '../api/auth'
 
 const LANG_ID = { C: 50, 'C++': 54, Java: 62, Python: 71 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 
-// ── Poll submission until status leaves 'Pending' ─────────────────────────────
 async function pollUntilDone(submissionId) {
   for (let attempt = 0; attempt < 60; attempt++) {
     await sleep(2000)
@@ -16,7 +15,6 @@ async function pollUntilDone(submissionId) {
   throw new Error('Polling timed out')
 }
 
-// ── Map backend status → human-readable verdict ───────────────────────────────
 function statusToVerdict(status, passedCount, total) {
   if (status === 'Completed' && passedCount === total) return 'Accepted'
   if (status === 'CompilationError') return 'Compilation Error'
@@ -28,12 +26,10 @@ function statusToVerdict(status, passedCount, total) {
 export function useTestRunner() {
   const [running,      setRunning]      = useState(false)
   const [submitting,   setSubmitting]   = useState(false)
-  const [runResults,   setRunResults]   = useState(null)   // { results[], submissionStatus, error? }
-  const [submitResult, setSubmitResult] = useState(null)   // { verdict, passed, total, ... }
+  const [runResults,   setRunResults]   = useState(null)   
+  const [submitResult, setSubmitResult] = useState(null)   
   const [activeTab,    setActiveTab]    = useState('testcases')
 
-  // ── RUN ──────────────────────────────────────────────────────────────────────
-  // Sends a single /run request, polls for completion, surfaces non-hidden results
   const run = async (code, language, problem) => {
     setRunning(true)
     setRunResults(null)
@@ -43,7 +39,7 @@ export function useTestRunner() {
     const langId = LANG_ID[language] || 71
 
     try {
-      // Single API call — backend queues all visible test cases at once
+
       const res = await submissionApi.run({
         code,
         language_id: langId,
@@ -58,7 +54,6 @@ export function useTestRunner() {
 
       const sub = await pollUntilDone(submissionId)
 
-      // test_results on a run contains only visible (non-hidden) results
       const rawResults = Array.isArray(sub.test_results) ? sub.test_results : []
 
       const results = rawResults.map((tr) => ({
@@ -70,7 +65,6 @@ export function useTestRunner() {
         status:   tr.status,
       }))
 
-      // Extract compilation/runtime error message
       const errorOutput = sub.error_output
         || rawResults.find(r => r.compile_output)?.compile_output
         || rawResults.find(r => r.stderr)?.stderr
@@ -85,8 +79,6 @@ export function useTestRunner() {
     }
   }
 
-  // ── SUBMIT ────────────────────────────────────────────────────────────────────
-  // Sends a single /submit request, polls, returns verdict + first wrong test case
   const submit = async (code, language, problem) => {
     setSubmitting(true)
     setSubmitResult(null)
@@ -111,15 +103,13 @@ export function useTestRunner() {
       const sub = await pollUntilDone(submissionId)
 
       const testResults  = Array.isArray(sub.test_results) ? sub.test_results : []
-      // passed_tests / total_tests are set by the worker on submit
+
       const passedCount  = sub.passed_tests ?? testResults.filter(r => r.passed).length
       const total        = sub.total_tests  ?? testResults.length
       const verdict      = statusToVerdict(sub.status, passedCount, total)
 
-      // Only expose the first wrong test case (hide the rest)
       const firstWrong   = testResults.find(r => !r.passed) ?? null
 
-      // Extract compilation/runtime error message
       const errorOutput = sub.error_output
         || testResults.find(r => r.compile_output)?.compile_output
         || testResults.find(r => r.stderr)?.stderr
@@ -132,8 +122,8 @@ export function useTestRunner() {
         status:     sub.status,
         runtime:    sub.runtime_ms != null ? `${sub.runtime_ms}ms` : '—',
         memory:     sub.memory_kb  != null ? `${sub.memory_kb} KB` : '—',
-        firstWrong,        // single failing test case or null
-        errorOutput,       // compilation/runtime error message
+        firstWrong,        
+        errorOutput,       
         isSubmission: true,
       }
 
@@ -147,10 +137,16 @@ export function useTestRunner() {
     }
   }
 
+  const reset = () => {
+    setRunResults(null)
+    setSubmitResult(null)
+    setActiveTab('testcases')
+  }
+
   return {
     running, submitting,
     runResults, submitResult,
     activeTab, setActiveTab,
-    run, submit,
+    run, submit, reset
   }
 }

@@ -41,9 +41,9 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
 
-      {/* ── Sticky Navbar ─────────────────────────────────────────────────── */}
+      {}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 flex items-center justify-between px-8 py-4">
-        {/* Logo — clickable, goes to landing page */}
+        {}
         <button
           onClick={() => nav('/')}
           className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
@@ -56,12 +56,12 @@ export default function LandingPage() {
 
         <div className="flex items-center gap-3">
           {loggedIn ? (
-            /* ── Logged-in: single "Go to Dashboard" button ── */
+
             <Button variant="primary" size="sm" onClick={() => nav('/dashboard')} className="glow-orange">
               <LayoutDashboard size={14} /> Go to Dashboard
             </Button>
           ) : (
-            /* ── Guest: Sign In + Get Started ── */
+
             <>
               <Button variant="ghost" size="sm" onClick={() => nav('/auth')}>Sign In</Button>
               <Button variant="primary" size="sm" onClick={() => nav('/auth')} className="glow-orange">
@@ -72,7 +72,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {}
       <section className="max-w-5xl mx-auto px-8 pt-24 pb-20 text-center">
 
         <motion.div {...up(0.05)}>
@@ -107,7 +107,7 @@ export default function LandingPage() {
           )}
         </motion.div>
 
-        {/* Stats */}
+        {}
         <motion.div
           {...up(0.32)}
           className="flex items-center justify-center gap-12 mt-16 pt-10 border-t border-gray-200"
@@ -121,7 +121,7 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* ── IDE Mockup ────────────────────────────────────────────────────── */}
+      {}
       <section className="max-w-6xl mx-auto px-8 pb-20">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -130,7 +130,7 @@ export default function LandingPage() {
           className="rounded-2xl border border-gray-200 overflow-hidden"
           style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}
         >
-          {/* Window chrome */}
+          {}
           <div className="flex items-center gap-2 px-4 py-3 bg-gray-100 border-b border-gray-200">
             <div className="w-3 h-3 rounded-full bg-red-400" />
             <div className="w-3 h-3 rounded-full bg-yellow-400" />
@@ -139,7 +139,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex h-64 bg-white">
-            {/* Sidebar */}
+            {}
             <div className="w-48 border-r border-gray-200 p-3 space-y-1">
               {['Sorting', 'Arrays', 'Linked Lists', 'Graphs', 'DP'].map((f, i) => (
                 <div key={f} className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs font-semibold ${i === 0 ? 'bg-orange-100 text-black' : 'text-black hover:bg-gray-50'}`}>
@@ -149,7 +149,7 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Code area */}
+            {}
             <div className="flex-1 p-4 font-mono text-xs space-y-1.5 bg-gray-50">
               {[
                 { line: 'class Solution {',                               color: '#1d4ed8' },
@@ -169,7 +169,7 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Test panel */}
+            {}
             <div className="w-56 border-l border-gray-200 p-3 bg-white">
               <div className="text-xs font-bold text-black mb-2 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-green-500" /> Test Cases
@@ -185,7 +185,7 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* ── How it Works ──────────────────────────────────────────────────── */}
+      {}
       <section className="bg-gray-50 border-y border-gray-200 py-20">
         <div className="max-w-5xl mx-auto px-8">
           <motion.h2
@@ -215,7 +215,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features Grid ─────────────────────────────────────────────────── */}
+      {}
       <section className="max-w-6xl mx-auto px-8 py-24">
         <motion.h2
           initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
@@ -244,7 +244,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA ───────────────────────────────────────────────────────────── */}
+      {}
       <section className="max-w-2xl mx-auto px-8 pb-24 text-center">
         <div className="p-10 rounded-2xl border-2 border-orange-200 bg-orange-50">
           <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center mx-auto mb-5">
@@ -258,7 +258,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
+      {}
       <footer className="border-t border-gray-200 px-8 py-6 flex items-center justify-between bg-white">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-orange-500 flex items-center justify-center">

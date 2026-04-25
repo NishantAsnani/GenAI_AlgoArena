@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, CheckCircle, BookOpen } from 'lucide-react'
 import { useAppSelector } from '../../hooks/redux'
-import { selectSolved } from '../../store/slices/progressSlice'
 import { selectModules } from '../../store/slices/modulesSlice'
 
 const DIFF = {
@@ -24,9 +23,10 @@ function DiffBadge({ d }) {
   )
 }
 
-function ProblemRow({ problem, isSolved }) {
+function ProblemRow({ problem }) {
   const nav = useNavigate()
   const id  = problem._id || problem.id
+  const isSolved = problem.isSolved === true
   return (
     <button
       onClick={() => nav(`/problem/${id}`)}
@@ -55,7 +55,7 @@ function ProblemRow({ problem, isSolved }) {
   )
 }
 
-function LessonFolder({ lesson, solved, search }) {
+function LessonFolder({ lesson, search }) {
   const [open, setOpen] = useState(false)
   const problems = lesson.problems || []
 
@@ -65,7 +65,7 @@ function LessonFolder({ lesson, solved, search }) {
 
   if (search && filtered.length === 0) return null
 
-  const solvedCount = problems.filter(p => solved.includes(p._id || p.id)).length
+  const solvedCount = problems.filter(p => p.isSolved === true).length
 
   return (
     <div className="border-b border-gray-100 last:border-0">
@@ -106,7 +106,6 @@ function LessonFolder({ lesson, solved, search }) {
                 <ProblemRow
                   key={p._id || p.id}
                   problem={p}
-                  isSolved={solved.includes(p._id || p.id)}
                 />
               ))
             )}
@@ -117,12 +116,12 @@ function LessonFolder({ lesson, solved, search }) {
   )
 }
 
-function ModuleFolder({ module, solved, search }) {
+function ModuleFolder({ module, search }) {
   const [open, setOpen] = useState(false)
   const lessons     = module.lessons || []
   const allProblems = lessons.flatMap(l => l.problems || [])
 
-  const solvedCount = allProblems.filter(p => solved.includes(p._id || p.id)).length
+  const solvedCount = allProblems.filter(p => p.isSolved === true).length
   const total       = allProblems.length
   const pct         = total ? Math.round((solvedCount / total) * 100) : 0
 
@@ -175,7 +174,6 @@ function ModuleFolder({ module, solved, search }) {
                 <LessonFolder
                   key={lesson._id || lesson.id}
                   lesson={lesson}
-                  solved={solved}
                   search={search}
                 />
               ))
@@ -188,7 +186,6 @@ function ModuleFolder({ module, solved, search }) {
 }
 
 export default function ProblemList({ search }) {
-  const solved  = useAppSelector(selectSolved)
   const modules = useAppSelector(selectModules)
 
   if (modules.length === 0) {
@@ -205,7 +202,6 @@ export default function ProblemList({ search }) {
         <ModuleFolder
           key={mod._id || mod.id}
           module={mod}
-          solved={solved}
           search={search}
         />
       ))}

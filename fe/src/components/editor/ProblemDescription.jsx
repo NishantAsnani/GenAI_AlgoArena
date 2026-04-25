@@ -1,5 +1,5 @@
-// src/components/editor/ProblemDescription.jsx
-// Left panel — Description + Submissions tabs
+
+
 import { useState, useEffect } from 'react'
 import { FileText, Clock, Send, Trash2, Eye, ArrowLeft, Activity,
          RotateCcw, Loader2, AlertCircle, CheckCircle,
@@ -18,21 +18,18 @@ const TABS = [
   { id: 'submissions', label: 'Submissions',  icon: Clock    },
 ]
 
-// Removed custom renderText in favor of ReactMarkdown
-
-// ── Delete Confirmation Modal ─────────────────────────────────────────────────
 function DeleteConfirmModal({ submission, onConfirm, onCancel }) {
   if (!submission) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+      {}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onCancel}
       />
-      {/* Modal card */}
+      {}
       <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-[340px] mx-4 p-6 flex flex-col gap-4">
-        {/* Icon + title */}
+        {}
         <div className="flex flex-col items-center gap-3 text-center">
           <div className="w-12 h-12 rounded-full bg-red-50 border border-red-100 flex items-center justify-center">
             <Trash2 size={20} className="text-red-500" />
@@ -47,7 +44,7 @@ function DeleteConfirmModal({ submission, onConfirm, onCancel }) {
           </div>
         </div>
 
-        {/* Verdict chip */}
+        {}
         <div className="flex justify-center">
           <span
             className="px-3 py-1 rounded-full text-[11px] font-bold border"
@@ -61,7 +58,7 @@ function DeleteConfirmModal({ submission, onConfirm, onCancel }) {
           </span>
         </div>
 
-        {/* Actions */}
+        {}
         <div className="flex gap-2 mt-1">
           <button
             onClick={onCancel}
@@ -83,7 +80,6 @@ function DeleteConfirmModal({ submission, onConfirm, onCancel }) {
   )
 }
 
-// ── Description tab ───────────────────────────────────────────────────────────
 function DescriptionTab({ problem }) {
   const dc = DIFF_COLOR[problem.difficulty] || DIFF_COLOR.Easy
   return (
@@ -145,7 +141,7 @@ function DescriptionTab({ problem }) {
         </div>
       ))}
 
-      {/* ── Constraints ─────────────────────────────────────────────── */}
+      {}
       {(problem.time_limit_ms || problem.memory_limit_kb || (problem.constraints || []).length > 0) && (
         <div className="rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
@@ -156,7 +152,7 @@ function DescriptionTab({ problem }) {
           </div>
 
           <div className="p-4 space-y-3">
-            {/* Time & Memory limit badges */}
+            {}
             {(problem.time_limit_ms || problem.memory_limit_kb) && (
               <div className="flex gap-2 flex-wrap">
                 {problem.time_limit_ms && (
@@ -184,7 +180,7 @@ function DescriptionTab({ problem }) {
               </div>
             )}
 
-            {/* Constraint detail bullets */}
+            {}
             {(problem.constraints || []).length > 0 && (
               <ul className="space-y-1.5">
                 {problem.constraints.map((c, i) => (
@@ -202,7 +198,6 @@ function DescriptionTab({ problem }) {
   )
 }
 
-// ── Complexity Badge ──────────────────────────────────────────────────────────
 function ComplexityBadge({ label, notation, color }) {
   return (
     <div className={`flex flex-col items-center justify-center px-4 py-3 rounded-xl border ${color} flex-1`}>
@@ -212,7 +207,6 @@ function ComplexityBadge({ label, notation, color }) {
   )
 }
 
-// ── Analysis View ─────────────────────────────────────────────────────────────
 function AnalysisView({ submission, problemId, onBack }) {
   const [loading,  setLoading]  = useState(false)
   const [analysis, setAnalysis] = useState(submission.analysis || null)
@@ -369,15 +363,7 @@ function AnalysisView({ submission, problemId, onBack }) {
               </div>
             )}
 
-            {/* <div className="pt-1">
-              <button onClick={runAnalysis} disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold
-                  border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-black
-                  disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                {loading ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
-                {loading ? 'Re-analyzing…' : 'Re-analyze'}
-              </button>
-            </div> */}
+            {}
           </div>
         )}
 
@@ -394,7 +380,6 @@ function AnalysisView({ submission, problemId, onBack }) {
   )
 }
 
-// ── Submissions tab ───────────────────────────────────────────────────────────
 function SubmissionsTab({ submissions, onDelete, problemId, loading }) {
   const [viewingCode,   setViewingCode]   = useState(null)
   const [analyzingSub,  setAnalyzingSub]  = useState(null)
@@ -439,14 +424,14 @@ function SubmissionsTab({ submissions, onDelete, problemId, loading }) {
   return (
     <div className="p-4">
 
-      {/* ── Delete Confirmation Modal ── */}
+      {}
       <DeleteConfirmModal
         submission={pendingDelete}
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />
 
-      {/* Code viewer */}
+      {}
       {viewingCode && (
         <div className="mb-4 rounded-xl border border-gray-200 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
@@ -466,7 +451,7 @@ function SubmissionsTab({ submissions, onDelete, problemId, loading }) {
         </div>
       )}
 
-      {/* Table */}
+      {}
       <div className="rounded-xl border border-gray-200 overflow-hidden">
         <div className="grid grid-cols-[30px_1fr_64px_100px_36px_36px] gap-1.5 px-3 py-2.5
           bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
@@ -548,7 +533,6 @@ function SubmissionsTab({ submissions, onDelete, problemId, loading }) {
   )
 }
 
-// ── ProblemDescription (main export) ──────────────────────────────────────────
 export default function ProblemDescription({
   problem,
   submissions,

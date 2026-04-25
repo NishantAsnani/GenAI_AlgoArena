@@ -4,10 +4,9 @@ import { Trophy, BookOpen, BarChart2, Search } from 'lucide-react'
 import { useAppSelector, useAppDispatch } from '../hooks/redux'
 import { selectUser }          from '../store/slices/authSlice'
 import {
+  fetchModules, selectModulesLoading,
   selectSolvedCount, selectTotalCount, selectPercentage,
-  loadUserProgress,
-} from '../store/slices/progressSlice'
-import { fetchModules, selectModulesLoading } from '../store/slices/modulesSlice'
+} from '../store/slices/modulesSlice'
 import Topbar      from '../components/dashboard/Topbar'
 import ProblemList from '../components/dashboard/ProblemList'
 
@@ -45,10 +44,6 @@ export default function DashboardPage() {
   useEffect(() => {
     dispatch(fetchModules())
   }, [dispatch])
-
-  useEffect(() => {
-    if (user?.email) dispatch(loadUserProgress(user.email))
-  }, [user?.email, dispatch])
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'there'
   const greeting    = (() => {

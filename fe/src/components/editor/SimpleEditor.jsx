@@ -1,15 +1,10 @@
-// src/components/editor/SimpleEditor.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Monaco-powered code editor
-// Supports: C, C++, Java, Python
-// Features: Solarized Light theme, language dropdown, copy, reset
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 import { useRef, useState } from 'react'
 import { Copy, Check, RotateCcw, ChevronDown, Code2 } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 import toast from 'react-hot-toast'
 
-// Solarized Light theme
 const SOLARIZED_LIGHT = {
   base: 'vs',
   inherit: true,
@@ -61,13 +56,10 @@ const SOLARIZED_LIGHT = {
 
 export const LANGUAGES = ['C', 'C++', 'Java', 'Python']
 
-// File extension per language
 const EXT = { C: 'c', 'C++': 'cpp', Java: 'java', Python: 'py' }
 
-// Monaco language IDs
 const MONACO_LANG = { C: 'c', 'C++': 'cpp', Java: 'java', Python: 'python' }
 
-// Language accent colours (for the dropdown indicator dot)
 const LANG_COLOR = {
   C:      '#268bd2',
   'C++':  '#cb4b16',
@@ -75,7 +67,6 @@ const LANG_COLOR = {
   Python: '#2aa198',
 }
 
-// ── Language Dropdown ─────────────────────────────────────────────────────────
 function LanguageDropdown({ language, onLanguageChange }) {
   const [open, setOpen] = useState(false)
 
@@ -93,7 +84,7 @@ function LanguageDropdown({ language, onLanguageChange }) {
         onMouseEnter={e => { if (!open) e.currentTarget.style.background = '#ddd6c4' }}
         onMouseLeave={e => { if (!open) e.currentTarget.style.background = '#eee8d5' }}
       >
-        {/* Coloured dot */}
+        {}
         <span
           className="w-2 h-2 rounded-full flex-shrink-0"
           style={{ background: LANG_COLOR[language] || '#93a1a1' }}
@@ -149,7 +140,6 @@ function LanguageDropdown({ language, onLanguageChange }) {
   )
 }
 
-// ── SimpleEditor ──────────────────────────────────────────────────────────────
 export default function SimpleEditor({
   code,
   onChange,
@@ -186,22 +176,22 @@ export default function SimpleEditor({
   return (
     <div className="flex flex-col h-full" style={{ background: '#fdf6e3' }}>
 
-      {/* ── Toolbar ───────────────────────────────────────────────────── */}
+      {}
       <div
         className="flex items-center justify-between px-3 py-2 flex-shrink-0"
         style={{ background: '#eee8d5', borderBottom: '1px solid #d3c9a8' }}
       >
-        {/* Language dropdown */}
+        {}
         <LanguageDropdown language={language} onLanguageChange={onLanguageChange} />
 
-        {/* Right: filename + actions */}
+        {}
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-mono" style={{ color: '#93a1a1' }}>
             solution.{EXT[language]}
           </span>
           <div className="w-px h-3.5" style={{ background: '#d3c9a8' }} />
 
-          {/* Copy */}
+          {}
           <button
             onClick={handleCopy}
             title="Copy code"
@@ -216,7 +206,7 @@ export default function SimpleEditor({
             }
           </button>
 
-          {/* Reset */}
+          {}
           <button
             onClick={handleReset}
             title="Reset to starter code"
@@ -230,7 +220,7 @@ export default function SimpleEditor({
         </div>
       </div>
 
-      {/* ── Monaco Editor ────────────────────────────────────────────── */}
+      {}
       <div className="flex-1 overflow-hidden">
         <Editor
           height="100%"

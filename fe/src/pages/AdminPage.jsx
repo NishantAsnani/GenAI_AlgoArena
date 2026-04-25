@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Database, LayoutGrid, ChevronDown, ChevronRight, Edit2, Plus, Trash2, X, Book, Code2 } from 'lucide-react'
+import { Users, User, Database, LayoutGrid, ChevronDown, ChevronRight, Edit2, Plus, Trash2, X, Book, Code2 } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { useAppSelector } from '../hooks/redux'
@@ -56,7 +56,6 @@ function Modal({ isOpen, onClose, title, children }) {
   )
 }
 
-// ── Test Cases Manager (For Problems) ───────────────────────────────────────
 function TestCasesManager({ initialCases = [] }) {
   const [cases, setCases] = useState(initialCases.length ? initialCases : [{ input: '', expected_output: '', isHidden: false }])
 
@@ -143,7 +142,7 @@ function UserManager() {
     e.preventDefault()
     const formData = new FormData(e.target)
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-    
+
     try {
       if (modalType === 'add') {
         await axios.post(`${API_URL}/user/signup`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -224,7 +223,7 @@ function UserManager() {
           <Input label="Name" name="name" defaultValue={editData?.name || ''} required />
           <Input label="Email" name="email" type="email" defaultValue={editData?.email || ''} required />
           <Input label="Password" name="password" type="password" placeholder={modalType === 'edit' ? "Leave blank to keep unchanged" : ""} required={modalType === 'add'} />
-          
+
           <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-white border-t border-gray-100 py-3 mt-4">
             <Button variant="ghost" onClick={closeModal} type="button">Cancel</Button>
             <Button variant="primary" type="submit">{modalType === 'add' ? 'Create User' : 'Save Changes'}</Button>
@@ -256,22 +255,19 @@ function CurriculumManager() {
   const [editData, setEditData] = useState(null)
   const [parentId, setParentId] = useState(null)
 
-  // AI Problem Generation state
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiDifficulty, setAiDifficulty] = useState('')
   const [aiGenerating, setAiGenerating] = useState(false)
   const [aiGenerated, setAiGenerated] = useState(null)
-  const [aiGenKey, setAiGenKey] = useState(0)  // key to force re-render form fields
+  const [aiGenKey, setAiGenKey] = useState(0)  
   const [aiError, setAiError] = useState('')
 
-  // Fetch Curriculum
   const fetchCurriculum = async () => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
     try {
       const res = await axios.get(`${API_URL}/module`, { headers: { Authorization: `Bearer ${token}` } })
       setModules(res.data.data || [])
-      
-      // Auto-expand everything for visibility
+
       if (res.data.data) {
         const mods = {}; const less = {};
         res.data.data.forEach(m => {
@@ -285,7 +281,6 @@ function CurriculumManager() {
     }
   }
 
-  // Initial Fetch
   useEffect(() => {
     if (token) fetchCurriculum()
   }, [token])
@@ -295,7 +290,7 @@ function CurriculumManager() {
 
   const openAddModal = (type, parent_id = null) => {
     setModalType(type); setEditData(null); setParentId(parent_id)
-    // Reset AI state when opening a fresh modal
+
     setAiGenerated(null); setAiPrompt(''); setAiDifficulty(''); setAiError('')
   }
   const openEditModal = (type, data) => { setModalType(type); setEditData(data); }
@@ -304,7 +299,6 @@ function CurriculumManager() {
     setAiGenerated(null); setAiPrompt(''); setAiDifficulty(''); setAiError('')
   }
 
-  // AI Problem Generation handler
   const handleAiGenerate = async () => {
     setAiGenerating(true)
     setAiError('')
@@ -315,7 +309,7 @@ function CurriculumManager() {
       const data = res?.data?.data
       if (data) {
         setAiGenerated(data)
-        setAiGenKey(prev => prev + 1)  // force re-render all form fields
+        setAiGenKey(prev => prev + 1)  
         toast.success('Problem generated! Review and edit below before creating.')
       } else {
         setAiError('No data returned from AI. Try again.')
@@ -334,7 +328,7 @@ function CurriculumManager() {
     const formData = new FormData(e.target)
     const data = Object.fromEntries(formData.entries())
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-    
+
     try {
       let url = ''
       let payload = {}
@@ -513,8 +507,8 @@ function CurriculumManager() {
 
       <Modal isOpen={!!modalType} onClose={closeModal} title={`${editData ? 'Edit' : 'Add'} ${modalType === 'module' ? 'Module' : modalType === 'lesson' ? 'Lesson' : 'Problem'}`}>
         <form onSubmit={handleFormSubmit} className="space-y-4">
-          
-          {/* MODULE FORM */}
+
+          {}
           {modalType === 'module' && (
             <>
               <div className="grid grid-cols-2 gap-4">
@@ -535,7 +529,7 @@ function CurriculumManager() {
             </>
           )}
 
-          {/* LESSON FORM */}
+          {}
           {modalType === 'lesson' && (
             <>
               <div className="grid grid-cols-1 gap-4">
@@ -550,10 +544,10 @@ function CurriculumManager() {
             </>
           )}
 
-          {/* PROBLEM FORM */}
+          {}
           {modalType === 'problem' && (
             <>
-              {/* ── AI Problem Generator (only for new problems) ────────── */}
+              {}
               {!editData && (
                 <div className="mb-5 p-4 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl space-y-3">
                   <div className="flex items-center gap-2 mb-1">
@@ -611,13 +605,13 @@ function CurriculumManager() {
                 <textarea name="description_md" defaultValue={editData?.description_md || aiGenerated?.description_md || ''} key={`desc-${aiGenKey}`} rows={4} required
                   className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:border-orange-500 outline-none text-sm resize-none font-mono" placeholder="Problem statement..." />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Tags (comma sep)" name="tags" defaultValue={editData?.tags?.join(', ') || aiGenerated?.tags?.join(', ') || ''} key={`tags-${aiGenKey}`} placeholder="arrays, math" />
                 <Input label="Supported Languages (comma sep)" name="supported_languages" defaultValue={editData?.supported_languages?.join(', ') || aiGenerated?.supported_languages?.join(', ') || 'cpp, java, python, js'} key={`lang-${aiGenKey}`} placeholder="cpp, java, python, js" />
               </div>
 
-              {/* Constraints */}
+              {}
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
                 <h4 className="text-sm font-bold text-black border-b pb-1">Constraints</h4>
                 <div className="grid grid-cols-2 gap-4">
@@ -631,14 +625,14 @@ function CurriculumManager() {
                 </div>
               </div>
 
-              {/* Hints */}
+              {}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-semibold text-black">Hints (One per line)</label>
                 <textarea name="hints" defaultValue={editData?.hints?.join('\n') || aiGenerated?.hints?.join('\n') || ''} key={`hints-${aiGenKey}`} rows={2}
                   className="w-full p-2 rounded-lg border border-gray-300 outline-none text-sm resize-none" placeholder="Try using a hash map..." />
               </div>
 
-              {/* Test Cases Manager Component */}
+              {}
               <TestCasesManager initialCases={editData?.test_cases || aiGenerated?.test_cases || []} key={`tc-${aiGenKey}`} />
             </>
           )}
@@ -669,19 +663,20 @@ export default function AdminPage() {
   const token = useAppSelector(selectToken)
   const [activeTab, setActiveTab] = useState('dashboard')
   const [stats, setStats] = useState({ users: 0, modules: 0, problems: 0 })
+  const [usersList, setUsersList] = useState([])
 
   useEffect(() => {
     const fetchStats = async () => {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
       try {
         const [uRes, mRes, pRes] = await Promise.all([
-          axios.get(`${API_URL}/user?limit=1`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/user?limit=100`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API_URL}/module`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API_URL}/problem?limit=100`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
-        
-        // Backend returns pagination.totalUsers (not pagination.total)
+
         const userCount = uRes.data?.data?.pagination?.totalUsers || 0;
+        const usersArray = uRes.data?.data?.users || [];
         const modulesData = mRes.data?.data || [];
         const problemCount = pRes.data?.data?.total || 0;
 
@@ -690,6 +685,7 @@ export default function AdminPage() {
           modules: modulesData.length,
           problems: problemCount
         });
+        setUsersList(usersArray);
       } catch (err) {
         console.error('Failed to fetch stats:', err.response?.data || err.message);
       }
@@ -699,7 +695,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Topbar solvedCount={0} totalCount={0} percentage={0} />
+      <Topbar hideProgress={true} solvedCount={0} totalCount={0} percentage={0} />
 
       <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-8 flex gap-8">
         <div className="w-64 flex-shrink-0">
@@ -731,6 +727,40 @@ export default function AdminPage() {
                   <OverviewCard title="Total Users" value={stats.users} icon={Users} color="#6366f1" />
                   <OverviewCard title="Curriculum Modules" value={stats.modules} icon={Database} color="#f97316" />
                   <OverviewCard title="Total Problems" value={stats.problems} icon={Code2} color="#ec4899" />
+                </div>
+
+                {}
+                <div className="bg-white rounded-xl border border-gray-200 p-6 mt-6">
+                  <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2">
+                    <User size={20} className="text-orange-500"/> User Progress
+                  </h3>
+                  <div className="space-y-4">
+                    {usersList.length === 0 ? (
+                      <p className="text-sm text-gray-500">No users found.</p>
+                    ) : (
+                      usersList.map(u => {
+                        const solved = u.solvedCount || 0;
+                        const total = stats.problems || 1; 
+                        const percentage = Math.round((solved / total) * 100);
+                        return (
+                          <div key={u._id || u.id} className="flex flex-col gap-1.5 p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold text-black">{u.name} <span className="font-normal text-xs text-gray-500 ml-1">({u.email})</span></span>
+                              <span className="text-xs font-bold text-gray-600">{solved} / {stats.problems} Solved</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                              <motion.div
+                                className="h-full rounded-full bg-orange-500"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${percentage}%` }}
+                                transition={{ duration: 0.8, ease: 'easeOut' }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}

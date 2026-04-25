@@ -1,7 +1,6 @@
-// src/components/ui/index.jsx
+
 import { Loader2 } from 'lucide-react'
 
-// ── Button ─────────────────────────────────────────────────────────────────────
 export function Button({
   children, onClick, variant = 'primary', size = 'md',
   disabled = false, loading = false, className = '', type = 'button', ...props
@@ -36,7 +35,6 @@ export function Button({
   )
 }
 
-// ── Divider ────────────────────────────────────────────────────────────────────
 export function Divider({ label }) {
   return (
     <div className="flex items-center gap-3">
@@ -47,7 +45,6 @@ export function Divider({ label }) {
   )
 }
 
-// ── Input ──────────────────────────────────────────────────────────────────────
 export function Input({ label, error, className = '', ...props }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -68,7 +65,6 @@ export function Input({ label, error, className = '', ...props }) {
   )
 }
 
-// ── Badge ──────────────────────────────────────────────────────────────────────
 export function Badge({ children, color = '#f97316', className = '' }) {
   return (
     <span
@@ -80,7 +76,6 @@ export function Badge({ children, color = '#f97316', className = '' }) {
   )
 }
 
-// ── Confirm Dialog ──────────────────────────────────────────────────────────────
 export function ConfirmDialog({ isOpen, onClose, onConfirm, title = 'Confirm', message = 'Are you sure?', confirmLabel = 'Delete', variant = 'danger' }) {
   if (!isOpen) return null;
   return (

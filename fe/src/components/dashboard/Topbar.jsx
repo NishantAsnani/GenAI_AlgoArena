@@ -1,13 +1,11 @@
-// src/components/dashboard/Topbar.jsx
+
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LogOut, User, ChevronDown, LayoutGrid } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '../../hooks/redux'
 import { logoutUser, selectUser }         from '../../store/slices/authSlice'
-import { resetProgress }                  from '../../store/slices/progressSlice'
 
-// ── Logo ──────────────────────────────────────────────────────────────────────
 function Logo() {
   const nav = useNavigate()
   return (
@@ -27,7 +25,6 @@ function Logo() {
   )
 }
 
-// ── User Dropdown ─────────────────────────────────────────────────────────────
 function UserMenu({ user }) {
   const dispatch = useAppDispatch()
   const nav      = useNavigate()
@@ -46,11 +43,9 @@ function UserMenu({ user }) {
   const handleLogout = async () => {
     setOpen(false)
     await dispatch(logoutUser())
-    dispatch(resetProgress())
     nav('/auth')
   }
 
-  // Get initials from email
   const initial = (user?.email || user?.name || 'U')[0].toUpperCase()
   const displayName = user?.name || user?.email?.split('@')[0] || 'User'
 
@@ -61,7 +56,7 @@ function UserMenu({ user }) {
         className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-gray-200
           bg-white hover:bg-gray-50 transition-all"
       >
-        {/* Avatar */}
+        {}
         {user?.profile_pic ? (
           <img
             src={user.profile_pic}
@@ -84,7 +79,7 @@ function UserMenu({ user }) {
         />
       </button>
 
-      {/* Dropdown */}
+      {}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -95,13 +90,13 @@ function UserMenu({ user }) {
             className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-200
               bg-white shadow-lg overflow-hidden z-50"
           >
-            {/* User info */}
+            {}
             <div className="px-4 py-3 border-b border-gray-100">
               <p className="text-[13px] font-semibold text-black truncate">{displayName}</p>
               <p className="text-[11px] text-gray-400 truncate mt-0.5">{user?.email}</p>
             </div>
 
-            {/* Menu items */}
+            {}
             <div className="p-1.5">
               {isAdminPage && (
                 <button
@@ -155,33 +150,34 @@ function UserMenu({ user }) {
   )
 }
 
-// ── Topbar ────────────────────────────────────────────────────────────────────
-export default function Topbar({ solvedCount, totalCount, percentage }) {
-  const user = useAppSelector(selectUser)
+  export default function Topbar({ solvedCount, totalCount, percentage, hideProgress }) {
+    const user = useAppSelector(selectUser)
 
-  return (
-    <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
-        <Logo />
+    return (
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+          <Logo />
 
-        {/* Progress bar — center */}
-        <div className="flex-1 max-w-xs hidden sm:block">
-          <div className="flex items-center justify-between text-[11px] mb-1">
-            <span className="text-gray-400">Progress</span>
-            <span className="font-semibold text-black">{solvedCount}/{totalCount}</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-orange-500"
-              initial={{ width: 0 }}
-              animate={{ width: `${percentage}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-            />
-          </div>
+          {}
+          {!hideProgress && (
+            <div className="flex-1 max-w-xs hidden sm:block">
+              <div className="flex items-center justify-between text-[11px] mb-1">
+                <span className="text-gray-400">Progress</span>
+                <span className="font-semibold text-black">{solvedCount}/{totalCount}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-orange-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${percentage}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+          )}
+
+          <UserMenu user={user} />
         </div>
-
-        <UserMenu user={user} />
-      </div>
     </header>
   )
 }

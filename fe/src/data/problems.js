@@ -1,8 +1,4 @@
-// src/data/problems.js
-// ─────────────────────────────────────────────────────────────────────────────
-// Problem data — mock until backend is connected
-// BACKEND: Replace with API call → GET /api/problems and GET /api/problems/:id
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 export const PROBLEMS = [
   {
@@ -241,7 +237,6 @@ export const PROBLEMS = [
   },
 ]
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 export const getFolders      = ()         => [...new Set(PROBLEMS.map(p => p.folder))]
 export const getSubfolders   = (folder)   => [...new Set(PROBLEMS.filter(p => p.folder === folder).map(p => p.subfolder))]
 export const getProblems     = (f, sub)   => PROBLEMS.filter(p => p.folder === f && p.subfolder === sub)

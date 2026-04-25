@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
 import { useAppSelector } from '../../hooks/redux'
-import { selectSolved, selectSolvedCount, selectPercentage } from '../../store/slices/progressSlice'
-import { selectProblems, selectProblemsCount } from '../../store/slices/problemsSlice'
-import { selectAllProblemsFromModules } from '../../store/slices/modulesSlice'
+import {
+  selectSolvedCount, selectTotalCount, selectPercentage,
+  selectSolvedByDifficulty,
+} from '../../store/slices/modulesSlice'
 
 function DonutChart({ easy, medium, hard, total, solved }) {
   const r    = 52
@@ -60,81 +60,11 @@ function DonutChart({ easy, medium, hard, total, solved }) {
   )
 }
 
-function Heatmap() {
-  const user    = useAppSelector(selectUser)
-  const heatKey = `aa_heatmap_${user?.email}`
-  const heatData = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem(heatKey)) || {} } catch { return {} }
-  }, [heatKey])
-
-  const days = useMemo(() => {
-    const arr = []
-    for (let i = 27; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
-      arr.push({ key, val: heatData[key] || 0 })
-    }
-    return arr
-  }, [heatData])
-
-  const activeCount = days.filter(d => d.val > 0).length
-
-  const colorMap = (v) => {
-    if (v === 0) return '#f3f4f6'
-    if (v === 1) return '#fed7aa'
-    if (v === 2) return '#fb923c'
-    return '#ea580c'
-  }
-
-  const weeks = []
-  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7))
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">
-          Activity — last 28 days
-        </span>
-        <span className="text-[11px] text-gray-400">{activeCount} active days</span>
-      </div>
-      <div className="flex gap-1">
-        {weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-col gap-1">
-            {week.map(d => (
-              <div
-                key={d.key}
-                title={`${d.key}: ${d.val} submission${d.val !== 1 ? 's' : ''}`}
-                className="w-5 h-5 rounded-sm cursor-default transition-all hover:opacity-70"
-                style={{ background: colorMap(d.val) }}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-1.5 mt-2">
-        <span className="text-[10px] text-gray-400">Less</span>
-        {[0, 1, 2, 3].map(v => (
-          <div key={v} className="w-3 h-3 rounded-sm" style={{ background: colorMap(v) }} />
-        ))}
-        <span className="text-[10px] text-gray-400">More</span>
-      </div>
-    </div>
-  )
-}
-
 export default function ProfileStats() {
-  const solved      = useAppSelector(selectSolved)
   const solvedCount = useAppSelector(selectSolvedCount)
+  const total       = useAppSelector(selectTotalCount)
   const percentage  = useAppSelector(selectPercentage)
-  const sliceProblems  = useAppSelector(selectProblems)
-  const moduleProblems = useAppSelector(selectAllProblemsFromModules)
-  const problems = sliceProblems.length > 0 ? sliceProblems : moduleProblems
-  const total    = problems.length
-
-  const easy   = problems.filter(p => p.difficulty === 'Easy'   && solved.includes(p._id || p.id)).length
-  const medium = problems.filter(p => p.difficulty === 'Medium' && solved.includes(p._id || p.id)).length
-  const hard   = problems.filter(p => p.difficulty === 'Hard'   && solved.includes(p._id || p.id)).length
+  const { easy, medium, hard } = useAppSelector(selectSolvedByDifficulty)
 
   return (
     <div className="space-y-5">

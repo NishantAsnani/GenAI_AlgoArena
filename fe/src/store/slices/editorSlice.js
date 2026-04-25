@@ -1,40 +1,32 @@
-// src/store/slices/editorSlice.js
-// ─────────────────────────────────────────────────────────────────────────────
-// Editor Slice — manages code editor state, run & submit results
-// CURRENT MODE : Mock (no backend)
-// BACKEND MODE : Uncomment "BACKEND:" sections in useTestRunner.js
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 import { createSlice } from '@reduxjs/toolkit'
 
 const editorSlice = createSlice({
   name: 'editor',
   initialState: {
-    // Per-problem code cache: { [problemId]: { [language]: codeString } }
+
     codeCache:    {},
 
-    // Active language per problem: { [problemId]: language }
     languageCache: {},
 
-    // Run / Submit results
     running:      false,
     submitting:   false,
-    runResults:   null,   // array of { input, expected, actual, passed, time }
-    submitResult: null,   // { verdict, passed, total, runtime, memory }
-    activeTab:    'testcases', // 'testcases' | 'results'
+    runResults:   null,   
+    submitResult: null,   
+    activeTab:    'testcases', 
   },
   reducers: {
-    // Save code for a problem + language to cache
+
     setCode: (state, { payload: { problemId, language, code } }) => {
       if (!state.codeCache[problemId]) state.codeCache[problemId] = {}
       state.codeCache[problemId][language] = code
     },
 
-    // Set active language for a problem
     setLanguage: (state, { payload: { problemId, language } }) => {
       state.languageCache[problemId] = language
     },
 
-    // Run state
     setRunning:    (state, { payload }) => { state.running    = payload },
     setSubmitting: (state, { payload }) => { state.submitting = payload },
     setRunResults: (state, { payload }) => {
@@ -47,7 +39,6 @@ const editorSlice = createSlice({
     },
     setActiveTab: (state, { payload }) => { state.activeTab = payload },
 
-    // Reset results when problem/language changes
     resetResults: (state) => {
       state.running      = false
       state.submitting   = false
@@ -65,7 +56,6 @@ export const {
   setActiveTab, resetResults,
 } = editorSlice.actions
 
-// ── Selectors ─────────────────────────────────────────────────────────────────
 export const selectCode = (problemId, language) => (s) =>
   s.editor.codeCache[problemId]?.[language] ?? null
 
