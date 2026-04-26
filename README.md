@@ -113,13 +113,3 @@ The frontend is designed for high performance and a rich user experience.
 3. Configure `.env` with backend URL
 4. Run the development server: `npm run dev`
 
----
-
-## 🧪 Testing
-
-The backend includes a comprehensive test suite using **Jest** and **Supertest**.
-- Run all tests: `npm test`
-
----
-
-Developed with ❤️ as part of the GenAI AlgoArena Project.
