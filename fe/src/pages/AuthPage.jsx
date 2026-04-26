@@ -100,9 +100,22 @@ export default function AuthPage() {
 
   const handleSignup = async () => {
     const errs = {}
-    if (!signupForm.name)               errs.name     = 'Name is required'
-    if (!signupForm.email)              errs.email    = 'Email is required'
-    if (signupForm.password.length < 6) errs.password = 'Minimum 6 characters'
+    if (!signupForm.name)  errs.name  = 'Name is required'
+    if (!signupForm.email) errs.email = 'Email is required'
+    
+    const pwd = signupForm.password;
+    if (!pwd) {
+      errs.password = 'Password is required'
+    } else if (pwd.length < 6) {
+      errs.password = 'Minimum 6 characters'
+    } else if (!/[A-Z]/.test(pwd)) {
+      errs.password = 'At least one uppercase letter required'
+    } else if (!/[0-9]/.test(pwd)) {
+      errs.password = 'At least one number required'
+    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) {
+      errs.password = 'At least one special character required'
+    }
+
     if (Object.keys(errs).length) { setErrors(errs); return }
     const res = await dispatch(signupUser(signupForm))
     if (signupUser.fulfilled.match(res)) { toast.success('Account created!'); nav('/dashboard') }
