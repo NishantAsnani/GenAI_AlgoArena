@@ -68,10 +68,10 @@ async function Signup(req, res) {
   const signupSchema = Joi.object({
     name: Joi.string().required(),
     email: Joi.string().email().required(),
-    password: Joi.string().min(6).pattern(/^(?=.*[A-Z])(?=.*\d).*$/).required()
+    password: Joi.string().min(6).pattern(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).*$/).required()
     .messages({
-    'string.pattern.base': 'Password must contain at least one uppercase letter and one number, and be alphanumeric',
-    'string.min': 'Password must be at least 8 characters long',
+    'string.pattern.base': 'Password must contain at least one uppercase letter, one number, and one special character',
+    'string.min': 'Password must be at least 6 characters long',
     'any.required': 'Password is required'
   })
   });
